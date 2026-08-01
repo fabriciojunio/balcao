@@ -60,6 +60,13 @@ politica_preco:
 
 troca:
   validade_horas: 48
+  # Frase obrigatória em toda mensagem que cita valor de troca.
+  texto_ressalva: "Isso é uma pré-avaliação pelo que você me contou; o valor final sai depois da conferência do aparelho na loja."
+  termo_ressalva: "pré-avaliação"
+  # A foto nunca é pedida. Se o cliente mandar, ela só confirma ou piora o
+  # estado declarado, nunca melhora.
+  aceita_foto: true
+  confianca_minima_foto: 0.6
   faixa_percentual: 6
   ajuste_minimo: -0.85
   exige_conferencia_fisica: true
@@ -99,6 +106,14 @@ escalonamento:
     - avaliacao_humana_necessaria
   max_falhas_auditor: 2
   max_rodadas_negociacao: 3
+
+textos:
+  audio_sem_transcricao: "Não consegui ouvir o áudio aqui. Pode me escrever, ou eu chamo um vendedor?"
+  midia_recebida: "Recebi seu arquivo. Vou pedir para um vendedor dar uma olhada e te responder."
+  foto_em_avaliacao: "Recebi a foto, obrigado. Ela ajuda na pré-avaliação, mas a conferência final é na loja."
+  despedida_opt_out: "Pronto, não te mando mais mensagem. Se precisar de algo, é só chamar aqui."
+  chamando_vendedor: "Vou chamar um vendedor para te ajudar, só um instante."
+  fora_do_horario: "A loja está fechada agora, mas já deixei seu contato anotado e te respondemos na abertura."
 
 conformidade:
   aviso_inicial: "Oi! Aqui é o atendimento da Loja Exemplo. Falo com você por um assistente automático e, a qualquer momento, é só pedir que eu chamo um vendedor."

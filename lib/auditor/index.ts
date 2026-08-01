@@ -12,7 +12,16 @@ export type TipoViolacao =
   | "numero_sem_formatacao"
   | "marcador_nao_resolvido"
   | "frase_proibida"
-  | "valor_ilegivel";
+  | "valor_ilegivel"
+  | "ressalva_ausente"
+  | "afirmacao_nao_comprovada";
+
+/** Afirmações que só podem sair se uma ferramenta tiver comprovado. */
+export const AFIRMACOES: Readonly<Record<string, RegExp>> = {
+  ultima_unidade: /ultima unidade|ultimo em estoque|so (tenho|resta|sobrou) (um|uma|1)\b|esta acabando/,
+  prazo_limitado: /so (hoje|ate hoje|ate amanha)|ultimas horas|por tempo limitado|promocao relampago|acaba (hoje|amanha)/,
+  frete_gratis: /frete gratis|entrega gratis|sem custo de entrega/,
+};
 
 export interface Violacao {
   readonly tipo: TipoViolacao;
@@ -33,6 +42,10 @@ export interface ContextoAuditoria {
   readonly toleranciaCentavos: number;
   /** Promessas que o agente não pode fazer em nenhuma hipótese. */
   readonly frasesProibidas: readonly string[];
+  /** Texto que precisa aparecer na mensagem, como a ressalva da cotação. */
+  readonly ressalvaExigida?: string;
+  /** Afirmações de escassez ou prazo que uma ferramenta comprovou. */
+  readonly afirmacoesPermitidas: readonly string[];
 }
 
 export interface ResultadoAuditoria {
@@ -49,6 +62,7 @@ export const CONTEXTO_PADRAO: ContextoAuditoria = {
   limiarNumeroSolto: 100,
   toleranciaCentavos: 0,
   frasesProibidas: [],
+  afirmacoesPermitidas: [],
 };
 
 export function contextoDe(parcial: Partial<ContextoAuditoria>): ContextoAuditoria {
@@ -83,6 +97,29 @@ export function auditarMensagem(texto: string, contexto: ContextoAuditoria): Res
         tipo: "frase_proibida",
         trecho: frase,
         motivo: "O agente não tem autorização para prometer isto.",
+      });
+    }
+  }
+
+  if (contexto.ressalvaExigida !== undefined) {
+    const exigida = semAcento(contexto.ressalvaExigida).toLowerCase().trim();
+    if (exigida !== "" && !textoNormalizado.includes(exigida)) {
+      violacoes.push({
+        tipo: "ressalva_ausente",
+        trecho: contexto.ressalvaExigida,
+        motivo: "A mensagem cita valor de troca sem dizer que é pré-avaliação.",
+      });
+    }
+  }
+
+  for (const [nome, padrao] of Object.entries(AFIRMACOES)) {
+    if (contexto.afirmacoesPermitidas.includes(nome)) continue;
+    const encontrado = padrao.exec(textoNormalizado);
+    if (encontrado !== null) {
+      violacoes.push({
+        tipo: "afirmacao_nao_comprovada",
+        trecho: encontrado[0],
+        motivo: `Escassez ou prazo sem comprovação é publicidade enganosa (${nome}).`,
       });
     }
   }

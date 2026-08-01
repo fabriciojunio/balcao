@@ -132,6 +132,10 @@ export interface ValoresDaRodada {
   readonly percentuais?: readonly number[];
   readonly parcelas?: readonly number[];
   readonly numeros?: readonly number[];
+  /** Texto que a mensagem é obrigada a conter nesta rodada. */
+  readonly ressalvaExigida?: string;
+  /** Escassez ou prazo que a ferramenta comprovou e o agente pode citar. */
+  readonly afirmacoes?: readonly string[];
 }
 
 /** Soma ao contexto base os valores que as ferramentas devolveram nesta rodada. */
@@ -145,5 +149,7 @@ export function contextoComValores(
     percentuaisPermitidos: [...base.percentuaisPermitidos, ...(rodada.percentuais ?? [])],
     parcelasPermitidas: [...base.parcelasPermitidas, ...(rodada.parcelas ?? [])],
     numerosPermitidos: [...base.numerosPermitidos, ...(rodada.numeros ?? [])],
+    afirmacoesPermitidas: [...base.afirmacoesPermitidas, ...(rodada.afirmacoes ?? [])],
+    ...(rodada.ressalvaExigida === undefined ? {} : { ressalvaExigida: rodada.ressalvaExigida }),
   };
 }

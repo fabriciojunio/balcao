@@ -73,6 +73,18 @@ export const trocaSchema = z.object({
   ajuste_minimo: fracaoNegativa.default(-0.85),
   exige_conferencia_fisica: z.boolean().default(true),
   valor_minimo_aceito_reais: z.number().min(0).default(100),
+  /** Frase que toda mensagem com valor de troca precisa conter. */
+  texto_ressalva: z
+    .string()
+    .min(10)
+    .default(
+      "Isso é uma pré-avaliação pelo que você me contou; o valor final sai depois da conferência do aparelho na loja.",
+    ),
+  /** Palavra que o auditor exige na mensagem para provar a ressalva. */
+  termo_ressalva: z.string().min(3).default("pré-avaliação"),
+  /** Foto do cliente entra como pré-avaliação. Nunca é pedida, só aceita. */
+  aceita_foto: z.boolean().default(true),
+  confianca_minima_foto: z.number().min(0).max(1).default(0.6),
   estados: z.record(z.string(), fracaoNegativa),
   redutores: z.record(z.string(), z.union([fracaoNegativa, z.literal("recusar")])),
   recusa_automatica: z.array(z.string()).default([]),
@@ -109,6 +121,25 @@ export const conformidadeSchema = z.object({
   frases_proibidas: z.array(z.string()).default([]),
 });
 
+export const textosSchema = z.object({
+  audio_sem_transcricao: z
+    .string()
+    .default("Não consegui ouvir o áudio aqui. Pode me escrever, ou eu chamo um vendedor?"),
+  midia_recebida: z
+    .string()
+    .default("Recebi seu arquivo. Vou pedir para um vendedor dar uma olhada e te responder."),
+  foto_em_avaliacao: z
+    .string()
+    .default("Recebi a foto, obrigado. Ela ajuda na pré-avaliação, mas a conferência final é na loja."),
+  despedida_opt_out: z
+    .string()
+    .default("Pronto, não te mando mais mensagem. Se precisar de algo, é só chamar aqui."),
+  chamando_vendedor: z.string().default("Vou chamar um vendedor para te ajudar, só um instante."),
+  fora_do_horario: z
+    .string()
+    .default("A loja está fechada agora, mas já deixei seu contato anotado e te respondemos na abertura."),
+});
+
 export const configTenantSchema = z.object({
   tenant: identidadeSchema,
   canal: canalSchema,
@@ -118,6 +149,7 @@ export const configTenantSchema = z.object({
   estoque: estoqueSchema,
   escalonamento: escalonamentoSchema.default({}),
   conformidade: conformidadeSchema,
+  textos: textosSchema.default({}),
 });
 
 export type ConfigTenant = z.infer<typeof configTenantSchema>;
