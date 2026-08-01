@@ -2,7 +2,7 @@
 # Uso: `make <alvo>`. Rode `make help` para a lista.
 
 .DEFAULT_GOAL := help
-.PHONY: help install typecheck lint test test-cov test-int config db-up db-down db-push \
+.PHONY: help install typecheck lint test test-cov test-int config expurgar db-up db-down db-push \
         db-studio audit verify clean
 
 help: ## Lista os alvos disponiveis
@@ -26,6 +26,9 @@ test-cov: ## Testes com gate de cobertura
 
 test-int: ## Testes de integracao (precisa de DATABASE_URL)
 	npm run test:integration
+
+expurgar: ## Expurgo de retencao LGPD (use ARGS=--simular para so contar)
+	npm run expurgar -- $(ARGS)
 
 config: ## Valida os arquivos de configuracao das lojas
 	npm run config:validar

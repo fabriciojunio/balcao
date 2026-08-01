@@ -24,7 +24,8 @@
     "dev": "tsx watch app/main.ts",
     "start": "tsx app/main.ts",
     "demo": "tsx scripts/demo.ts",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "expurgar": "tsx scripts/expurgar.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
