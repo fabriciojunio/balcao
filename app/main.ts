@@ -99,7 +99,14 @@ const deps = montarOrquestrador({
   agenteAtivo: () => agente.ativo,
 });
 
-const servidor = criarServidor({ env, deps, usuarios: repositorios.usuarios, log, agente });
+const servidor = criarServidor({
+  env,
+  deps,
+  usuarios: repositorios.usuarios,
+  metricas: repositorios.metricas,
+  log,
+  agente,
+});
 
 await servidor.listen({ port: env.PORTA, host: "0.0.0.0" });
 log.info("servidor.no_ar", {

@@ -5,13 +5,14 @@ import { assinaturaValida, mensagensDoWebhook } from "../lib/adaptadores/whatsap
 import type { Env } from "../lib/env.js";
 import type { Logger } from "../lib/log.js";
 import { atender, type DependenciasOrquestrador } from "../lib/orquestrador.js";
-import type { RepositorioUsuarios } from "../lib/portas.js";
+import type { RepositorioMetricas, RepositorioUsuarios } from "../lib/portas.js";
 import { criarSessao, lerSessao, senhaConfere } from "../lib/sessao.js";
 import {
   paginaAuditoria,
   paginaConversa,
   paginaFila,
   paginaLogin,
+  paginaMetricas,
   paginaPropostas,
   paginaSimulador,
 } from "./paginas.js";
@@ -22,6 +23,7 @@ export interface OpcoesServidor {
   readonly env: Env;
   readonly deps: DependenciasOrquestrador;
   readonly usuarios: RepositorioUsuarios;
+  readonly metricas: RepositorioMetricas;
   readonly log: Logger;
   /** Interruptor compartilhado com o orquestrador. */
   readonly agente: { ativo: boolean };
@@ -245,6 +247,21 @@ export function criarServidor(opcoes: OpcoesServidor): ServidorBalcao {
       await deps.auditoria.registrar("proposta_aprovada", { propostaId: id, por: usuario.id });
     }
     return resposta.redirect("/painel/propostas", 303);
+  });
+
+  const inicioDoPeriodo = (dias: number): Date =>
+    new Date(deps.relogio.agora().getTime() - dias * 86_400_000);
+
+  app.get("/painel/metricas", async (requisicao, resposta) => {
+    if (autenticado(requisicao) === null) return html(resposta, paginaLogin(), 401);
+    const dias = Number((requisicao.query as { dias?: string }).dias ?? 30);
+    return html(resposta, paginaMetricas(await opcoes.metricas.resumo(inicioDoPeriodo(dias))));
+  });
+
+  app.get("/api/metricas", async (requisicao, resposta) => {
+    if (autenticado(requisicao) === null) return resposta.status(401).send({ erro: "sem sessão" });
+    const dias = Number((requisicao.query as { dias?: string }).dias ?? 30);
+    return opcoes.metricas.resumo(inicioDoPeriodo(dias));
   });
 
   app.get("/painel/auditoria", async (requisicao, resposta) => {

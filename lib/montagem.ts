@@ -10,8 +10,8 @@ import {
 } from "./tenant/carregar.js";
 import type { ConfigTenant } from "./tenant/schema.js";
 
-/** O orquestrador não conhece usuários do painel: isso é assunto do servidor. */
-type Repositorios = Omit<AdaptadoresMemoria, "estado" | "canal" | "usuarios">;
+/** Usuários e métricas são assunto do painel, não do orquestrador. */
+type Repositorios = Omit<AdaptadoresMemoria, "estado" | "canal" | "usuarios" | "metricas">;
 
 export interface OpcoesMontagem {
   readonly config: ConfigTenant;
