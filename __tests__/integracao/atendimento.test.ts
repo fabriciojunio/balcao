@@ -179,7 +179,14 @@ beforeEach(async () => {
     agenteAtivo: () => agente.ativo,
   });
 
-  app = criarServidor({ env, deps, usuarios: repos.usuarios, log: loggerSilencioso, agente });
+  app = criarServidor({
+    env,
+    deps,
+    usuarios: repos.usuarios,
+    metricas: repos.metricas,
+    log: loggerSilencioso,
+    agente,
+  });
 });
 
 afterEach(async () => {

@@ -115,7 +115,14 @@ beforeEach(() => {
     agenteAtivo: () => agente.ativo,
   });
 
-  app = criarServidor({ env, deps, usuarios: adaptadores.usuarios, log: loggerSilencioso, agente });
+  app = criarServidor({
+    env,
+    deps,
+    usuarios: adaptadores.usuarios,
+    metricas: adaptadores.metricas,
+    log: loggerSilencioso,
+    agente,
+  });
 });
 
 afterEach(async () => {
