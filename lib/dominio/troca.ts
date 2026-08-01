@@ -314,3 +314,17 @@ export function defeitosDeRespostas(respostas: Readonly<Record<string, string>>)
 
   return defeitos;
 }
+
+/**
+ * O modelo declarado pelo cliente corresponde a esta linha da tabela?
+ * Aceita erro de digitação e nome parcial: "galax s22" acha "Galaxy S22".
+ */
+export function modeloCombina(declarado: string, modeloDaTabela: string): boolean {
+  const frase = expandirAbreviacoes(declarado).replaceAll("_", " ");
+  const alvo = expandirAbreviacoes(modeloDaTabela).replaceAll("_", " ");
+
+  if (frase.includes(alvo)) return true;
+
+  const tokens = alvo.split(/\W+/).filter((t) => t.length > 0);
+  return tokens.length > 0 && tokens.every((t) => contemPalavraParecida(frase, t));
+}

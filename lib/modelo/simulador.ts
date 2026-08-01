@@ -68,6 +68,12 @@ function aposFerramenta(retorno: string, ultimaDoCliente: string): Record<string
   if (dados.erro === "parcelamento_indisponivel") {
     return responder("Nesse número de parcelas a gente não trabalha. Quer que eu veja em outra quantidade?");
   }
+  if (dados.erro === "faltam_produto_ou_cotacao" || dados.erro === "sem_produto_em_foco") {
+    return responder("Perfeito. E qual aparelho você quer levar?", "intencao_identificada");
+  }
+  if (dados.erro === "sem_valor_para_simular") {
+    return responder("Me diz qual aparelho te interessa que eu já simulo o parcelamento.");
+  }
   if (dados.erro !== undefined) {
     return responder("Deixa eu confirmar isso direitinho com um vendedor, só um instante.");
   }
