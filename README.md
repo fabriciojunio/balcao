@@ -38,9 +38,12 @@ usado, cotação e proposta de troca) sem banco, sem GPU e sem WhatsApp.
 | Painel: fila, assumir conversa, aprovar proposta, auditoria, botão de desligar | pronto |
 | Configuração por loja validada por esquema | pronto |
 | Bateria de conversas de referência | pronto |
+| Áudio transcrito, foto como pré-avaliação, envio de imagem | pronto |
+| Triagem de pedido de humano e pedido de saída, antes do modelo | pronto |
+| Métricas de operação | falta (ver [docs/roadmap.md](docs/roadmap.md)) |
 | Conectores de estoque por ERP | falta (ver [docs/roadmap.md](docs/roadmap.md)) |
 
-`274 testes de unidade` mais `31 de integração` contra PostgreSQL de verdade.
+`298 testes de unidade` mais `31 de integração` contra PostgreSQL de verdade.
 Cobertura acima de 88% no conjunto e acima de 95% no domínio.
 
 ```bash
@@ -133,6 +136,7 @@ isso que torna o servidor dentro da loja viável.
 ## Documentação
 
 - [docs/arquitetura.md](docs/arquitetura.md) — as camadas e por que elas existem
+- [docs/pesquisa.md](docs/pesquisa.md) — o que a pesquisa de mercado e a lei mudaram no sistema
 - [docs/homologacao.md](docs/homologacao.md) — como colocar em homologação
 - [docs/roadmap.md](docs/roadmap.md) — o que falta, em ordem
 - [CONTRIBUTING.md](CONTRIBUTING.md) — convenções de commit e de código

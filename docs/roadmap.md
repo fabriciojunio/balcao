@@ -24,7 +24,20 @@
 - Bateria de conversas de referência com executor
 - Carga inicial do banco e conversa de demonstração no CI
 
+- Triagem determinística antes do modelo: pedido de atendente, sinal de irritação
+  e pedido de saída, conforme o Decreto 11.034/2022
+- Áudio transcrito, foto lida como pré-avaliação e envio de imagem do produto
+- Pré-avaliação obrigatória em toda mensagem com valor de troca
+- Bloqueio de escassez e prazo sem comprovação da ferramenta
+
 ## Próximo
+
+**0. Métricas de operação**
+Taxa de contenção, resolução, tempo até o vendedor assumir (o Decreto fala em
+60 segundos), bloqueios do auditor e propostas emitidas. As referências de
+mercado estão em `docs/pesquisa.md`. É o que falta para o dono medir sem
+depender do nosso relato.
+
 
 **1. Conectores de estoque**
 Um adaptador por sistema, mesma interface. Começa pelo ERP da primeira loja, descoberto na fase 0.
