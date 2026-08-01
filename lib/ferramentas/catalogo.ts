@@ -1,6 +1,4 @@
-// Catálogo fechado de ferramentas. O modelo não alcança nada fora desta
-// lista, e cada ferramenta que devolve dinheiro devolve junto um id de
-// consulta, que é o que o auditor usa para conferir a mensagem final.
+// Catálogo fechado de ferramentas. O modelo não alcança nada fora daqui.
 
 import { z } from "zod";
 
@@ -50,7 +48,7 @@ export const CATALOGO: Readonly<Record<NomeFerramenta, DefinicaoFerramenta>> = {
     nome: "simular_parcelamento",
     descricao: "Calcula parcelas com as taxas reais da maquininha da loja.",
     entrada: z.object({
-      valor_reais: z.number().positive(),
+      valor_reais: z.number().positive().optional(),
       parcelas: z.number().int().positive().optional(),
     }),
     produzValores: true,
@@ -59,7 +57,7 @@ export const CATALOGO: Readonly<Record<NomeFerramenta, DefinicaoFerramenta>> = {
     nome: "avaliar_desconto",
     descricao: "Pergunta à política se um valor pedido pelo cliente pode ser aceito.",
     entrada: z.object({
-      produto_id: z.string().min(1),
+      produto_id: z.string().optional(),
       valor_pedido_reais: z.number().positive().optional(),
     }),
     produzValores: true,
@@ -74,8 +72,10 @@ export const CATALOGO: Readonly<Record<NomeFerramenta, DefinicaoFerramenta>> = {
     nome: "cotar_usado",
     descricao: "Fecha a avaliação e devolve a faixa de valor, com validade e ressalvas.",
     entrada: z.object({
-      avaliacao_id: z.string().min(1),
-      respostas: z.record(z.string(), z.string()),
+      avaliacao_id: z.string().optional(),
+      respostas: z.record(z.string(), z.string()).default({}),
+      /** O que o cliente escreveu. O sistema traduz para a opção do checklist. */
+      resposta_livre: z.string().optional(),
     }),
     produzValores: true,
   },
@@ -83,8 +83,8 @@ export const CATALOGO: Readonly<Record<NomeFerramenta, DefinicaoFerramenta>> = {
     nome: "montar_proposta_troca",
     descricao: "Junta o aparelho desejado e a cotação do usado e devolve a diferença a pagar.",
     entrada: z.object({
-      produto_id: z.string().min(1),
-      cotacao_id: z.string().min(1),
+      produto_id: z.string().optional(),
+      cotacao_id: z.string().optional(),
       parcelas: z.number().int().positive().optional(),
     }),
     produzValores: true,
@@ -92,7 +92,7 @@ export const CATALOGO: Readonly<Record<NomeFerramenta, DefinicaoFerramenta>> = {
   reservar_produto: {
     nome: "reservar_produto",
     descricao: "Segura a unidade para este cliente pelo prazo configurado.",
-    entrada: z.object({ produto_id: z.string().min(1) }),
+    entrada: z.object({ produto_id: z.string().optional() }),
     produzValores: false,
   },
   registrar_lead: {

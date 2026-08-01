@@ -1,6 +1,5 @@
-// Motor de avaliação de aparelho usado. Função pura, como o motor de preço.
-// Toda cotação sai com validade e com a ressalva de conferência física: o que
-// a loja assume é a tabela dela, não a descrição otimista do cliente.
+// Motor de avaliação de aparelho usado. Toda cotação sai com validade e com
+// a ressalva de conferência física.
 
 import { aplicarFator, descontarPercentual, type Centavos } from "../dinheiro.js";
 import { normalizarChave as normalizar } from "../texto.js";
@@ -237,6 +236,53 @@ export function checklistCompleto(
   checklist: readonly PerguntaChecklist[] = CHECKLIST_PADRAO,
 ): boolean {
   return proximaPergunta(respondidas, checklist) === null;
+}
+
+const ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/trincad|quebrad|rachad/, "tela_trincada"],
+  [/risco|arranh|risquin/, "risco_leve"],
+  [/sem marca|impecav|perfeit|zerad|novin/, "sem_marca"],
+  [/amassad|entortad/, "carcaca_amassada"],
+  [/tampa/, "tampa_trincada"],
+  [/marca de uso|uso normal/, "marca_de_uso"],
+  [/inteir|integr|conservad/, "integra"],
+  [/caixa e a? ?nota|nota e a? ?caixa|tenho tudo|completo/, "caixa_e_nota"],
+  [/so a caixa|somente a caixa|so caixa|sem a nota|sem nota/, "so_caixa"],
+  [/sem caixa|sem a caixa|perdi/, "sem_caixa"],
+  [/nao sei|sei nao|nem sei/, "nao_sei"],
+  [/8[5-9]|9\d|100|otima/, "acima_85"],
+  [/7\d|6\d|abaixo|fraca|acaba rapido|viciad/, "bateria_abaixo_80"],
+];
+
+const AFIRMA = /\b(sim|tem|ta|esta|claro|isso|positivo|uhum|aham)\b/;
+const NEGA = /\b(nao|nunca|negativo|nada|nenhum)\b/;
+
+/**
+ * Traduz a resposta livre do cliente na opção do checklist. Devolve null
+ * quando não dá para decidir, e aí a pergunta é repetida.
+ */
+export function interpretarResposta(pergunta: PerguntaChecklist, textoLivre: string): string | null {
+  const texto = normalizar(textoLivre).replaceAll("_", " ");
+
+  for (const opcao of pergunta.opcoes) {
+    if (texto.includes(opcao.replaceAll("_", " "))) return opcao;
+  }
+  if (pergunta.opcoes.includes("nao") && NEGA.test(texto)) return "nao";
+  if (pergunta.opcoes.includes("sim") && AFIRMA.test(texto)) return "sim";
+  for (const [padrao, opcao] of ALIASES) {
+    if (pergunta.opcoes.includes(opcao) && padrao.test(texto)) return opcao;
+  }
+
+  return null;
+}
+
+/**
+ * Estado geral deduzido do checklist. Cada defeito específico já tem o seu
+ * redutor, então o estado só distingue o aparelho sem nenhuma ressalva: cobrar
+ * duas vezes pelo mesmo problema derruba o valor sem justificativa.
+ */
+export function estadoDeRespostas(respostas: Readonly<Record<string, string>>): string {
+  return defeitosDeRespostas(respostas).length === 0 ? "excelente" : "bom";
 }
 
 /**

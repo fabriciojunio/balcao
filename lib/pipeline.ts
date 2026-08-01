@@ -1,6 +1,5 @@
 // O caminho que toda resposta percorre entre o modelo e o WhatsApp.
-// Formato fechado, marcadores resolvidos pelo sistema, auditoria, e só então
-// envio. Falhou duas vezes, chama gente: não existe terceira tentativa.
+// Falhou duas vezes, chama gente: não existe terceira tentativa.
 
 import { z } from "zod";
 import {
@@ -11,7 +10,7 @@ import {
   type Violacao,
 } from "./auditor/index.js";
 import type { Centavos } from "./dinheiro.js";
-import { podeUsar, type EstadoConversa } from "./dominio/conversa.js";
+import { EVENTOS, podeUsar, type EstadoConversa, type EventoConversa } from "./dominio/conversa.js";
 import { ehNomeDeFerramenta, type NomeFerramenta } from "./ferramentas/catalogo.js";
 
 /**
@@ -29,6 +28,7 @@ export const respostaModeloSchema = z.discriminatedUnion("acao", [
     acao: z.literal("chamar_ferramenta"),
     ferramenta: z.string().min(1),
     argumentos: z.record(z.string(), z.unknown()).default({}),
+    evento: z.string().optional(),
   }),
   z.object({
     acao: z.literal("escalar"),
@@ -114,6 +114,17 @@ export function processarResposta(entrada: EntradaPipeline): Decisao {
   }
 
   return { tipo: "enviar", texto: resolvido.value.texto };
+}
+
+/**
+ * Evento que o modelo sinalizou, se for um evento conhecido. O orquestrador
+ * aplica antes de decidir, porque a conversa pode ter mudado de fase na mesma
+ * mensagem em que o cliente pede a próxima coisa.
+ */
+export function eventoDaResposta(bruto: unknown): EventoConversa | null {
+  const evento = (bruto as { evento?: unknown })?.evento;
+  if (typeof evento !== "string") return null;
+  return (EVENTOS as readonly string[]).includes(evento) ? (evento as EventoConversa) : null;
 }
 
 export interface ValoresDaRodada {
