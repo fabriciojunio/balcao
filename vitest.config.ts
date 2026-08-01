@@ -17,6 +17,7 @@ export default defineConfig({
         "lib/modelo/ollama.ts",
         "lib/modelo/openai-compat.ts",
         "lib/modelo/index.ts",
+        "lib/modelo/midia.ts",
       ],
       thresholds: {
         lines: 85,

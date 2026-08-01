@@ -90,11 +90,35 @@ describe("leitura do webhook", () => {
     };
 
     expect(mensagensDoWebhook(payload)).toEqual([
-      { telefone: "5514999990000", texto: "oi", idExterno: "wamid.1", nome: "Ana" },
+      { telefone: "5514999990000", texto: "oi", idExterno: "wamid.1", tipo: "texto", nome: "Ana" },
     ]);
   });
 
-  it("ignora áudio, imagem e status de entrega", () => {
+  it("reconhece áudio e imagem em vez de descartar", () => {
+    const payload = {
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                messages: [
+                  { from: "551", id: "wamid.a", type: "audio", audio: { id: "midia-1" } },
+                  { from: "551", id: "wamid.i", type: "image", image: { id: "midia-2", caption: "olha ele" } },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const encontradas = mensagensDoWebhook(payload);
+    expect(encontradas).toHaveLength(2);
+    expect(encontradas[0]).toMatchObject({ tipo: "audio", midiaId: "midia-1", texto: "" });
+    expect(encontradas[1]).toMatchObject({ tipo: "imagem", midiaId: "midia-2", texto: "olha ele" });
+  });
+
+  it("ignora status de entrega e mídia sem identificador", () => {
     const payload = {
       entry: [
         {
@@ -103,6 +127,7 @@ describe("leitura do webhook", () => {
               value: {
                 statuses: [{ id: "wamid.2", status: "delivered" }],
                 messages: [{ from: "551", id: "wamid.3", type: "audio" }],
+                // áudio sem id de mídia não dá para baixar
               },
             },
           ],
