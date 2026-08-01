@@ -1,60 +1,54 @@
 # O que falta
 
-Ordem de construção. Cada item só começa quando o anterior está com teste verde.
-
 ## Pronto
 
 - Valores em centavos inteiros, com formatação e leitura em português
 - Motor de preço: margem mínima, teto por categoria, concessão por rodada, parcelamento com taxa
   real, validação da política
 - Motor de avaliação de usado: estados, redutores, recusa automática, limite de queda, checklist
-  guiado, conversão de respostas em defeitos
+  guiado, tradução da resposta livre do cliente em opção do checklist
 - Proposta de troca com conferência de margem do conjunto
 - Auditor de saída: extração de valores, resolução de marcadores, conferência, frases proibidas
 - Máquina de estados da conversa e catálogo fechado de ferramentas
 - Pipeline entre modelo e envio, com repetição e escalonamento
-- Configuração por loja validada por esquema, com adaptação para o domínio
+- Execução das onze ferramentas sobre os repositórios
+- Orquestrador: dedupe, aviso de conformidade, ciclo de ferramentas, escalonamento
+- Camada de modelo: Ollama, compatível com OpenAI, simulador determinístico e contingência
+  automática, com versão travada por identificador exato
+- Canal WhatsApp Cloud API: envio, verificação do webhook e conferência de assinatura
+- Persistência em PostgreSQL com tenant aplicado na consulta e reserva transacional
+- Servidor HTTP com cabeçalhos de segurança
+- Painel: fila, assumir e devolver conversa, aprovar proposta, trilha de auditoria, botão de
+  desligar, simulador de conversa
+- Configuração por loja validada por esquema
 - Bateria de conversas de referência com executor
-- Modelo de dados
+- Carga inicial do banco e conversa de demonstração no CI
 
 ## Próximo
 
-**1. Camada de dados**
-Repositórios sobre o Prisma, com o tenant aplicado na consulta e não no código de chamada. Reserva
-de produto transacional, testada sob concorrência: duas conversas disputando a última unidade não
-podem ambas fechar.
+**1. Conectores de estoque**
+Um adaptador por sistema, mesma interface. Começa pelo ERP da primeira loja, descoberto na fase 0.
+Enquanto não existir, o painel é a fonte de verdade do estoque de vitrine.
 
-**2. Ferramentas ligadas ao banco**
-Implementação de cada item de `lib/ferramentas/catalogo.ts` sobre os repositórios, devolvendo o id
-de consulta que alimenta o auditor.
+**2. Fila e agrupamento de mensagem picotada**
+Hoje cada mensagem é atendida na hora. Falta a espera de poucos segundos para juntar mensagem
+quebrada em três partes, e a fila com repetição em caso de falha de envio.
 
-**3. Camada de modelo**
-Interface única com adaptadores para runtime local e contingência em nuvem, versão travada por
-identificador exato, teto de tokens por conversa e troca automática quando o principal cai.
+**3. Edição da política e da tabela de troca pelo painel**
+O modelo de dados já versiona; falta a tela. Enquanto isso, os valores vêm do arquivo da loja.
 
-**4. Canal WhatsApp**
-Webhook com conferência de assinatura, deduplicação por identificador externo, fila com
-agrupamento de mensagem picotada e limite de vazão. Simulador de conversa para desenvolvimento.
+**4. Observabilidade**
+Métricas de escalonamento, bloqueio do auditor e tempo de resposta, com alerta no celular de quem
+está de plantão.
 
-**5. Orquestrador**
-Junta estado, memória da conversa, seleção de ferramentas, pipeline e escalonamento. É a peça que
-transforma os módulos prontos em atendimento.
+**5. Retomada de lead**
+Templates aprovados na Meta, respeito ao consentimento e limite de duas retomadas.
 
-**6. Painel**
-Fila de atendimento em tempo real, assumir conversa, aprovar proposta, editar política e tabela de
-troca com versionamento, relatórios e o botão de desligar.
-
-**7. Conectores de estoque**
-Um adaptador por sistema, mesma interface. Começa pelo que a loja do primeiro contrato usa.
-
-**8. Observabilidade**
-Log estruturado por conversa, métricas de escalonamento e de bloqueio do auditor, alertas.
-
-**9. Retomada de lead**
-Templates aprovados, respeito ao consentimento e limite de duas retomadas.
+**6. Expurgo automático**
+Rotina de retenção conforme `conformidade.retencao_conversas_dias` e anonimização a pedido.
 
 ## Depois
 
 - Migração do modelo para servidor na loja, com contingência em nuvem
 - Segunda loja, para provar que o custo de implantação cai
-- Calibragem da tabela de troca com os valores conferidos na loja contra os cotados na conversa
+- Calibragem da tabela de troca comparando o valor conferido na loja com o cotado na conversa

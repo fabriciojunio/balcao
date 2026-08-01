@@ -5,7 +5,25 @@ Versionamento semântico.
 
 ## [Não lançado]
 
-### Adicionado
+### Adicionado (sistema completo)
+
+- Orquestrador da conversa: deduplicação de reenvio da Meta, aviso de atendimento automatizado,
+  ciclo de chamadas de ferramenta, contagem de rodadas e escalonamento para humano.
+- Execução das onze ferramentas do catálogo sobre os repositórios, com o retorno anunciando os
+  marcadores que o modelo pode usar.
+- Camada de modelo com versão travada por identificador exato: Ollama, compatível com OpenAI,
+  simulador determinístico e contingência automática quando o principal cai.
+- Canal WhatsApp Cloud API: envio, verificação do webhook e conferência da assinatura em toda
+  requisição recebida.
+- Persistência em PostgreSQL com o tenant aplicado na consulta e reserva de produto transacional.
+- Servidor HTTP com cabeçalhos de segurança e painel da loja: fila de atendimento, assumir e
+  devolver conversa, aprovar proposta, trilha de auditoria, botão de desligar e simulador de
+  conversa.
+- Sessão do painel com cookie assinado e senha com scrypt, sem dependência externa.
+- Tradução da resposta livre do cliente na opção do checklist de avaliação, no domínio.
+- Carga inicial do banco e conversa de demonstração de ponta a ponta rodando no CI.
+
+### Adicionado (núcleo)
 
 - Núcleo de valores monetários em centavos inteiros, com formatação e leitura em português sem
   depender de ICU.

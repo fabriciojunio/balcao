@@ -37,11 +37,20 @@ Preencha no `.env`:
 ```bash
 make db-up
 npm run db:push
+npm run db:seed        # cria a loja, o usuário do painel e um estoque de exemplo
 npm run config:validar
 make verify
+npm run dev
 ```
 
-`make verify` precisa terminar verde antes de seguir.
+`make verify` precisa terminar verde antes de seguir. Com o servidor no ar:
+
+- `http://localhost:3000/saude` responde com tenant, canal, modelo e situação do agente
+- `http://localhost:3000/painel` é a fila de atendimento
+- `http://localhost:3000/simulador` conversa com o agente sem depender da Meta
+
+O usuário e a senha do painel saem no fim do `db:seed`. Troque a senha antes de qualquer coisa
+ficar acessível fora da máquina.
 
 ### 3. Configuração da loja
 
