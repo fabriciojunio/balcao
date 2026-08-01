@@ -1,7 +1,5 @@
 // Substituição dos marcadores que o modelo escreve no lugar dos números.
-// O modelo devolve "fica em {{preco_avista}}"; quem escreve o valor é o
-// sistema, a partir do retorno da ferramenta. Marcador sem valor é erro, não
-// é para sair mensagem com "{{preco_avista}}" para o cliente.
+// Marcador sem valor é erro, não vira mensagem quebrada para o cliente.
 
 import { erro, ok, type Result } from "../result.js";
 

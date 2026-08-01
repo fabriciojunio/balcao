@@ -1,6 +1,5 @@
 // Contrato da configuração de uma loja. Cliente novo é um arquivo validado
-// por este esquema, nunca um "if" no código. Configuração inválida derruba a
-// subida daquela loja e não encosta nas outras.
+// por este esquema, nunca um "if" no código.
 
 import { z } from "zod";
 

@@ -1,6 +1,4 @@
-// Normalização de texto compartilhada. Chave de tabela, nome de defeito e
-// resposta do cliente chegam com acento, maiúscula e espaço em qualquer
-// combinação; o domínio compara sempre a forma normalizada.
+// Normalização de texto compartilhada pelo domínio e pelo auditor.
 
 const DIACRITICOS = /[̀-ͯ]/g;
 

@@ -1,6 +1,5 @@
-// Junta o aparelho desejado com a cotação do usado. É o ponto onde os dois
-// motores se encontram, e onde se confere a margem do conjunto: não adianta
-// a venda fechar bem e a loja pagar caro demais pelo aparelho da troca.
+// Junta o aparelho desejado com a cotação do usado e confere a margem do
+// conjunto.
 
 import { formatarBRL, type Centavos } from "../dinheiro.js";
 import { erro, ok, type Result } from "../result.js";

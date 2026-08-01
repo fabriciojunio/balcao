@@ -1,6 +1,5 @@
-// Carregamento e adaptação da configuração de uma loja.
-// O arquivo é escrito em português, com valores em reais, porque quem edita é
-// o operador. Da fronteira para dentro tudo vira centavos e objeto de domínio.
+// Carrega a configuração da loja e adapta para os objetos de domínio.
+// O arquivo é escrito em reais; da fronteira para dentro tudo vira centavos.
 
 import { readFileSync } from "node:fs";
 import { parse as parseYaml } from "yaml";

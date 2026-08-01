@@ -1,6 +1,4 @@
-// Extração de todo número que sai numa mensagem. O auditor precisa enxergar
-// exatamente o que o cliente vai enxergar, incluindo o número mal formatado
-// que o modelo tentou escrever solto no meio da frase.
+// Extração de todo número que sai numa mensagem, inclusive o mal formatado.
 
 import { analisarMoedaBR, type Centavos } from "../dinheiro.js";
 

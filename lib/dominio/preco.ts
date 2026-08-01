@@ -1,6 +1,5 @@
-// Motor de precificação. Função pura: não conhece banco, HTTP nem modelo de
-// linguagem. É aqui, e somente aqui, que se decide quanto a loja pode cobrar
-// e quanto pode ceder. A IA nunca calcula nada disto; ela pergunta.
+// Motor de precificação. Função pura: é aqui, e só aqui, que se decide
+// quanto a loja pode cobrar e quanto pode ceder.
 
 import {
   aplicarFator,

@@ -1,7 +1,5 @@
 // Máquina de estados da conversa. Cada estado limita quais ferramentas o
-// modelo enxerga: quanto menor o leque, menor a chance de comportamento
-// estranho, e mais fácil descobrir onde a conversa estava quando algo deu
-// errado.
+// modelo enxerga.
 
 import type { NomeFerramenta } from "../ferramentas/catalogo.js";
 

@@ -1,7 +1,5 @@
-// Dinheiro em centavos inteiros. Nenhum valor monetário do sistema trafega
-// como float: preço, custo, desconto, parcela e cotação de usado são sempre
-// inteiros. Isso elimina a classe inteira de erro de arredondamento que faz
-// uma proposta fechar por um centavo a menos do que a margem permite.
+// Dinheiro em centavos inteiros. Nenhum valor monetário trafega como float:
+// é o que elimina o erro de arredondamento em cima da margem.
 
 /** Valor monetário em centavos. Sempre inteiro, pode ser negativo. */
 export type Centavos = number;

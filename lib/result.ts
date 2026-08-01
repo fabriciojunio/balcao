@@ -1,6 +1,5 @@
-// Resultado explícito em vez de exceção. Toda função de domínio que pode
-// recusar devolve Result: quem chama é obrigado a tratar a recusa, e o
-// compilador cobra isso.
+// Resultado explícito em vez de exceção: quem chama é obrigado a tratar a
+// recusa, e o compilador cobra isso.
 
 export type Ok<T> = { ok: true; value: T };
 export type Err<E = ErroApp> = { ok: false; error: E };

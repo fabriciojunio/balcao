@@ -1,6 +1,5 @@
-// A quinta trava. Nenhuma mensagem chega ao WhatsApp sem passar por aqui.
-// Todo valor monetário, percentual e número de parcelas precisa ter origem
-// numa consulta registrada; qualquer número fora disso bloqueia o envio.
+// A quinta trava. Todo número da mensagem precisa ter origem numa consulta
+// registrada; qualquer outro bloqueia o envio.
 
 import type { Centavos } from "../dinheiro.js";
 import { semAcento } from "../texto.js";
