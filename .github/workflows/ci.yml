@@ -30,8 +30,16 @@ jobs:
       - name: Validar configuracao das lojas
         run: npm run config:validar
 
+      - name: Validar o schema do banco
+        run: npx prisma validate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
       - name: Testes com gate de cobertura
         run: npm run test:coverage
+
+      - name: Conversa de demonstracao de ponta a ponta
+        run: npm run demo
 
       - name: Auditoria de dependencias de producao
         run: npm run audit:prod -- --audit-level=high
