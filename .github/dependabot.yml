@@ -8,6 +8,11 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "build(deps)"
+    # Troca de major é migração, não atualização: entra por decisão, não
+    # automaticamente. Correção de segurança continua chegando por alerta.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       dev:
         dependency-type: development

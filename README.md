@@ -40,7 +40,13 @@ usado, cotação e proposta de troca) sem banco, sem GPU e sem WhatsApp.
 | Bateria de conversas de referência | pronto |
 | Conectores de estoque por ERP | falta (ver [docs/roadmap.md](docs/roadmap.md)) |
 
-`274 testes`, cobertura acima de 88% no conjunto e acima de 95% no domínio.
+`274 testes de unidade` mais `31 de integração` contra PostgreSQL de verdade.
+Cobertura acima de 88% no conjunto e acima de 95% no domínio.
+
+```bash
+make verify                                    # tipos, lint, cobertura, configuração
+DATABASE_URL=... npm run test:integration      # precisa do banco de pé
+```
 
 ## Subir local
 
