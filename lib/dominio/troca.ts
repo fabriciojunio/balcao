@@ -2,7 +2,7 @@
 // a ressalva de conferência física.
 
 import { aplicarFator, descontarPercentual, type Centavos } from "../dinheiro.js";
-import { normalizarChave as normalizar } from "../texto.js";
+import { contemPalavraParecida, expandirAbreviacoes, normalizarChave as normalizar } from "../texto.js";
 
 /** Ajuste aplicado ao valor-base, em fração (-0.35 = tira 35%). */
 export type Ajuste = number | "recusar";
@@ -239,30 +239,31 @@ export function checklistCompleto(
 }
 
 const ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
-  [/trincad|quebrad|rachad/, "tela_trincada"],
-  [/risco|arranh|risquin/, "risco_leve"],
-  [/sem marca|impecav|perfeit|zerad|novin/, "sem_marca"],
-  [/amassad|entortad/, "carcaca_amassada"],
+  [/trincad|quebrad|rachad|estourad|estilhac/, "tela_trincada"],
+  [/risco|arranh|risquin|riscad/, "risco_leve"],
+  [/sem marca|impecav|perfeit|zerad|novin|sem risco|nenhuma marca|lisa/, "sem_marca"],
+  [/amassad|entortad|torto|batid/, "carcaca_amassada"],
   [/tampa/, "tampa_trincada"],
-  [/marca de uso|uso normal/, "marca_de_uso"],
-  [/inteir|integr|conservad/, "integra"],
-  [/caixa e a? ?nota|nota e a? ?caixa|tenho tudo|completo/, "caixa_e_nota"],
+  [/marca de uso|uso normal|marquinha|sinal de uso/, "marca_de_uso"],
+  [/inteir|integr|conservad|firme/, "integra"],
+  [/caixa e a? ?nota|nota e a? ?caixa|tenho tudo|completo|tudo certinho/, "caixa_e_nota"],
   [/so a caixa|somente a caixa|so caixa|sem a nota|sem nota/, "so_caixa"],
-  [/sem caixa|sem a caixa|perdi/, "sem_caixa"],
-  [/nao sei|sei nao|nem sei/, "nao_sei"],
-  [/8[5-9]|9\d|100|otima/, "acima_85"],
-  [/7\d|6\d|abaixo|fraca|acaba rapido|viciad/, "bateria_abaixo_80"],
+  [/sem caixa|sem a caixa|perdi|joguei fora|nao tenho nada/, "sem_caixa"],
+  [/nao sei|sei nao|nem sei|nao faco ideia|nem olhei/, "nao_sei"],
+  [/8[5-9]|9\d|100|otima|nova|boa saude|cheia/, "acima_85"],
+  [/[1-7]\d(?!\d)|abaixo|fraca|acaba rapido|viciad|ruim|nao segura/, "bateria_abaixo_80"],
 ];
 
-const AFIRMA = /\b(sim|tem|ta|esta|claro|isso|positivo|uhum|aham)\b/;
-const NEGA = /\b(nao|nunca|negativo|nada|nenhum)\b/;
+// "está" e "tem" são ambíguos demais para virar sim: "está limpo" é não.
+const AFIRMA = /\b(sim|claro|isso|positivo|uhum|aham|certo|exato|liga|funciona|normal)\b/;
+const NEGA = /\b(nao|nunca|negativo|nada|nenhum|nenhuma|zero|limpo|livre)\b/;
 
 /**
  * Traduz a resposta livre do cliente na opção do checklist. Devolve null
  * quando não dá para decidir, e aí a pergunta é repetida.
  */
 export function interpretarResposta(pergunta: PerguntaChecklist, textoLivre: string): string | null {
-  const texto = normalizar(textoLivre).replaceAll("_", " ");
+  const texto = expandirAbreviacoes(textoLivre).replaceAll("_", " ");
 
   for (const opcao of pergunta.opcoes) {
     if (texto.includes(opcao.replaceAll("_", " "))) return opcao;
@@ -271,6 +272,11 @@ export function interpretarResposta(pergunta: PerguntaChecklist, textoLivre: str
   if (pergunta.opcoes.includes("sim") && AFIRMA.test(texto)) return "sim";
   for (const [padrao, opcao] of ALIASES) {
     if (pergunta.opcoes.includes(opcao) && padrao.test(texto)) return opcao;
+  }
+  // Última tentativa: a opção escrita com erro de digitação.
+  for (const opcao of pergunta.opcoes) {
+    const palavras = opcao.split("_").filter((p) => p.length > 4);
+    if (palavras.length > 0 && palavras.every((p) => contemPalavraParecida(texto, p))) return opcao;
   }
 
   return null;
