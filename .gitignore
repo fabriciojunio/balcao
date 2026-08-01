@@ -1,0 +1,18 @@
+node_modules/
+coverage/
+dist/
+build/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+# Configuração real de cliente nunca vai para o repositório: só o exemplo.
+config/tenants/*.yml
+config/tenants/*.yaml
+!config/tenants/loja-exemplo.yml
+
+.DS_Store
+Thumbs.db
+*.log

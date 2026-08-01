@@ -1,0 +1,39 @@
+# Ambiente local de desenvolvimento e homologação.
+# O runtime do modelo fica em serviço próprio para poder ser trocado por uma
+# máquina dedicada (Mac mini na loja ou GPU em nuvem) sem mexer no resto.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: balcao-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: balcao
+      POSTGRES_PASSWORD: balcao
+      POSTGRES_DB: balcao
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-dados:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U balcao"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  modelo:
+    image: ollama/ollama:latest
+    container_name: balcao-modelo
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - modelo-dados:/root/.ollama
+    # Em homologação sem GPU, o modelo responde devagar mas responde.
+    # Na loja, este serviço é substituído pelo runtime nativo do Mac mini.
+    profiles:
+      - modelo
+
+volumes:
+  postgres-dados:
+  modelo-dados:
