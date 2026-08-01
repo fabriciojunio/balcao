@@ -135,6 +135,12 @@ export const textosSchema = z.object({
     .string()
     .default("Pronto, não te mando mais mensagem. Se precisar de algo, é só chamar aqui."),
   chamando_vendedor: z.string().default("Vou chamar um vendedor para te ajudar, só um instante."),
+  fora_do_assunto: z
+    .string()
+    .default("Aqui eu só consigo ajudar com aparelho, preço, troca e visita à loja. Quer ver alguma coisa disso?"),
+  assunto_recusado: z
+    .string()
+    .default("Sobre isso eu não consigo ajudar. Se for sobre compra ou troca de aparelho, estou à disposição."),
   fora_do_horario: z
     .string()
     .default("A loja está fechada agora, mas já deixei seu contato anotado e te respondemos na abertura."),

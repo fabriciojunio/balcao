@@ -13,6 +13,7 @@ import { executarFerramenta, type DependenciasFerramentas } from "./ferramentas/
 import type { Logger } from "./log.js";
 import { montarMensagens, montarPrompt, versaoDoPrompt } from "./modelo/prompt.js";
 import { contextoComValores, eventoDaResposta, processarResposta } from "./pipeline.js";
+import { avaliarEscopo } from "./dominio/escopo.js";
 import { triar } from "./dominio/triagem.js";
 import { mesclarDefeitos } from "./dominio/visao.js";
 import type {
@@ -123,6 +124,33 @@ export async function atender(
     });
   }
 
+  // Pedido ilícito nunca passa pelo modelo e sempre fica registrado, mesmo
+  // com um vendedor no comando: o dono precisa saber que foi pedido.
+  const escopo = avaliarEscopo(midia.texto);
+  if (escopo.tipo === "ilicito") {
+    await deps.auditoria.registrar("fora_de_escopo_ilicito", { termo: escopo.termo }, conversa.id);
+
+    if (agenteEstaMudo(conversa.estado)) {
+      return ok({
+        conversaId: conversa.id,
+        estado: conversa.estado,
+        respostas: [],
+        escalou: false,
+        ignorada: "atendimento_humano",
+      });
+    }
+
+    await enviar(conversa, deps.config.textos.assunto_recusado, deps);
+    conversa = await escalar(conversa, "fora_de_escopo", `pedido recusado: ${escopo.termo}`, deps);
+    return ok({
+      conversaId: conversa.id,
+      estado: conversa.estado,
+      respostas: [deps.config.textos.assunto_recusado],
+      escalou: true,
+      motivoEscalonamento: "fora_de_escopo",
+    });
+  }
+
   if (!deps.agenteAtivo()) {
     await escalar(conversa, "pedido_do_cliente", "agente desligado no painel", deps);
     return ok({
@@ -145,6 +173,33 @@ export async function atender(
   }
 
   const respostas: string[] = [];
+
+  if (escopo.tipo === "fora_do_assunto") {
+    const desvios = Number(conversa.memoria.desvios_de_assunto ?? "0") + 1;
+    conversa = await deps.conversas.atualizar(conversa.id, {
+      memoria: { ...conversa.memoria, desvios_de_assunto: String(desvios) },
+    });
+    await enviar(conversa, deps.config.textos.fora_do_assunto, deps);
+
+    // Insistiu duas vezes fora do assunto: quem resolve isso é um vendedor.
+    if (desvios >= 2) {
+      conversa = await escalar(conversa, "fora_de_escopo", `fora do assunto: ${escopo.termo}`, deps);
+      return ok({
+        conversaId: conversa.id,
+        estado: conversa.estado,
+        respostas: [deps.config.textos.fora_do_assunto],
+        escalou: true,
+        motivoEscalonamento: "fora_de_escopo",
+      });
+    }
+
+    return ok({
+      conversaId: conversa.id,
+      estado: conversa.estado,
+      respostas: [deps.config.textos.fora_do_assunto],
+      escalou: false,
+    });
+  }
 
   if (midia.escalar !== undefined || triagem.tipo === "escalar") {
     const motivo = midia.escalar ?? (triagem.tipo === "escalar" ? triagem.motivo : "fora_de_escopo");

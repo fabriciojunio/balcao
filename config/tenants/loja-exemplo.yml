@@ -113,6 +113,8 @@ textos:
   foto_em_avaliacao: "Recebi a foto, obrigado. Ela ajuda na pré-avaliação, mas a conferência final é na loja."
   despedida_opt_out: "Pronto, não te mando mais mensagem. Se precisar de algo, é só chamar aqui."
   chamando_vendedor: "Vou chamar um vendedor para te ajudar, só um instante."
+  fora_do_assunto: "Aqui eu só consigo ajudar com aparelho, preço, troca e visita à loja. Quer ver alguma coisa disso?"
+  assunto_recusado: "Sobre isso eu não consigo ajudar. Se for sobre compra ou troca de aparelho, estou à disposição."
   fora_do_horario: "A loja está fechada agora, mas já deixei seu contato anotado e te respondemos na abertura."
 
 conformidade:
