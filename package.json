@@ -25,7 +25,8 @@
     "start": "tsx app/main.ts",
     "demo": "tsx scripts/demo.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "expurgar": "tsx scripts/expurgar.ts"
+    "expurgar": "tsx scripts/expurgar.ts",
+    "evidencias": "tsx scripts/evidencias.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
