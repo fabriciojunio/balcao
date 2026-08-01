@@ -1,0 +1,339 @@
+// Modelo de dados do Balcão. Todo registro carrega o tenant, e toda proposta
+// enviada guarda as versões de política, prompt e modelo que a produziram:
+// é isso que permite explicar, meses depois, por que aquele preço saiu.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PapelUsuario {
+  DONO
+  GERENTE
+  VENDEDOR
+  SUPORTE
+}
+
+enum CategoriaProduto {
+  NOVO_LACRADO
+  SEMINOVO
+  ACESSORIO
+}
+
+enum EstadoConversa {
+  RECEPCAO
+  DESCOBERTA
+  APRESENTACAO
+  AVALIACAO_USADO
+  NEGOCIACAO
+  FECHAMENTO
+  ATENDIMENTO_HUMANO
+  RETOMADA
+  ENCERRADA
+}
+
+enum DirecaoMensagem {
+  ENTRADA
+  SAIDA
+}
+
+enum SituacaoProposta {
+  RASCUNHO
+  AGUARDANDO_APROVACAO
+  ENVIADA
+  ACEITA
+  RECUSADA
+  EXPIRADA
+}
+
+enum MotivoEscalonamento {
+  FRUSTRACAO
+  FORA_DE_ESCOPO
+  FALHA_AUDITOR
+  VALOR_ACIMA_ALCADA
+  PEDIDO_DO_CLIENTE
+  AVALIACAO_HUMANA_NECESSARIA
+}
+
+model Tenant {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  nomeExibicao String
+  ativo        Boolean  @default(true)
+  // Configuração validada pelo esquema Zod, guardada como recebida.
+  configuracao Json
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuarios       Usuario[]
+  contatos       Contato[]
+  conversas      Conversa[]
+  produtos       Produto[]
+  politicas      PoliticaPreco[]
+  tabelaTroca    TabelaTroca[]
+  avaliacoes     AvaliacaoUsado[]
+  propostas      Proposta[]
+  reservas       Reserva[]
+  escalonamentos Escalonamento[]
+  auditoria      RegistroAuditoria[]
+  casosEval      CasoEval[]
+
+  @@map("tenants")
+}
+
+model Usuario {
+  id        String       @id @default(cuid())
+  tenantId  String
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  email     String
+  senhaHash String
+  papel     PapelUsuario @default(VENDEDOR)
+  ativo     Boolean      @default(true)
+  criadoEm  DateTime     @default(now())
+
+  conversasAssumidas Conversa[]
+  escalonamentos     Escalonamento[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId, ativo])
+  @@map("usuarios")
+}
+
+model Contato {
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  telefone       String
+  nome           String?
+  // Consentimento para contato ativo (LGPD). Sem isto, só respondemos.
+  aceitaContato  Boolean   @default(false)
+  consentimentoEm DateTime?
+  anonimizadoEm  DateTime?
+  criadoEm       DateTime  @default(now())
+
+  conversas Conversa[]
+
+  @@unique([tenantId, telefone])
+  @@index([tenantId, criadoEm])
+  @@map("contatos")
+}
+
+model Conversa {
+  id                String         @id @default(cuid())
+  tenantId          String
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contatoId         String
+  contato           Contato        @relation(fields: [contatoId], references: [id], onDelete: Cascade)
+  estado            EstadoConversa @default(RECEPCAO)
+  responsavelId     String?
+  responsavel       Usuario?       @relation(fields: [responsavelId], references: [id])
+  rodadasNegociacao Int            @default(0)
+  falhasAuditor     Int            @default(0)
+  ultimaMensagemEm  DateTime       @default(now())
+  criadoEm          DateTime       @default(now())
+  atualizadoEm      DateTime       @updatedAt
+
+  mensagens      Mensagem[]
+  avaliacoes     AvaliacaoUsado[]
+  propostas      Proposta[]
+  reservas       Reserva[]
+  escalonamentos Escalonamento[]
+
+  @@index([tenantId, estado])
+  @@index([tenantId, ultimaMensagemEm])
+  @@map("conversas")
+}
+
+model Mensagem {
+  id           String          @id @default(cuid())
+  conversaId   String
+  conversa     Conversa        @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  direcao      DirecaoMensagem
+  texto        String
+  idExterno    String?         @unique
+  // Preenchido nas mensagens de saída geradas pelo agente.
+  versaoModelo String?
+  versaoPrompt String?
+  criadoEm     DateTime        @default(now())
+
+  @@index([conversaId, criadoEm])
+  @@map("mensagens")
+}
+
+model Produto {
+  id           String           @id @default(cuid())
+  tenantId     String
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sku          String
+  descricao    String
+  categoria    CategoriaProduto
+  memoriaGb    Int?
+  cor          String?
+  // Valores sempre em centavos inteiros.
+  precoTabela  Int
+  custo        Int
+  quantidade   Int              @default(0)
+  etiquetas    String[]         @default([])
+  // Momento da última sincronização com o sistema de estoque da loja.
+  sincronizadoEm DateTime       @default(now())
+  ativo        Boolean          @default(true)
+
+  reservas Reserva[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId, ativo, quantidade])
+  @@map("produtos")
+}
+
+model Reserva {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  produtoId  String
+  produto    Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  conversaId String
+  conversa   Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  expiraEm   DateTime
+  liberadaEm DateTime?
+  criadoEm   DateTime @default(now())
+
+  @@index([tenantId, expiraEm])
+  @@index([produtoId, liberadaEm])
+  @@map("reservas")
+}
+
+model PoliticaPreco {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  versao    Int
+  // Política nunca é editada: cada mudança cria uma versão nova.
+  conteudo  Json
+  vigenteDe DateTime @default(now())
+  criadaPor String?
+  criadoEm  DateTime @default(now())
+
+  propostas Proposta[]
+
+  @@unique([tenantId, versao])
+  @@map("politicas_preco")
+}
+
+model TabelaTroca {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  modelo       String
+  valorBase    Int
+  ativo        Boolean  @default(true)
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([tenantId, modelo])
+  @@index([tenantId, ativo])
+  @@map("tabela_troca")
+}
+
+model AvaliacaoUsado {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversaId     String
+  conversa       Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  modeloDeclarado String
+  respostas      Json
+  ajustesAplicados Json
+  valorBase      Int
+  valorApurado   Int
+  recusado       Boolean  @default(false)
+  motivoRecusa   String?
+  validadeAte    DateTime?
+  // Preenchido quando o aparelho chega na loja, para calibrar a tabela.
+  valorConferido Int?
+  conferidoEm    DateTime?
+  criadoEm       DateTime @default(now())
+
+  propostas Proposta[]
+
+  @@index([tenantId, criadoEm])
+  @@map("avaliacoes_usado")
+}
+
+model Proposta {
+  id                  String           @id @default(cuid())
+  tenantId            String
+  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversaId          String
+  conversa            Conversa         @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  avaliacaoId         String?
+  avaliacao           AvaliacaoUsado?  @relation(fields: [avaliacaoId], references: [id])
+  politicaId          String
+  politica            PoliticaPreco    @relation(fields: [politicaId], references: [id])
+  itens               Json
+  precoProduto        Int
+  valorAparelhoUsado  Int              @default(0)
+  diferencaAPagar     Int
+  parcelamento        Json?
+  situacao            SituacaoProposta @default(RASCUNHO)
+  exigeAprovacaoHumana Boolean         @default(false)
+  aprovadaPor         String?
+  validadeAte         DateTime
+  versaoModelo        String
+  versaoPrompt        String
+  criadoEm            DateTime         @default(now())
+
+  @@index([tenantId, situacao])
+  @@index([conversaId, criadoEm])
+  @@map("propostas")
+}
+
+model Escalonamento {
+  id          String              @id @default(cuid())
+  tenantId    String
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversaId  String
+  conversa    Conversa            @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  motivo      MotivoEscalonamento
+  resumo      String
+  assumidoPor String?
+  usuario     Usuario?            @relation(fields: [assumidoPor], references: [id])
+  assumidoEm  DateTime?
+  criadoEm    DateTime            @default(now())
+
+  @@index([tenantId, criadoEm])
+  @@index([tenantId, assumidoEm])
+  @@map("escalonamentos")
+}
+
+model RegistroAuditoria {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversaId String?
+  // "ferramenta", "bloqueio_auditor", "aprovacao", "kill_switch", ...
+  tipo       String
+  detalhe    Json
+  criadoEm   DateTime @default(now())
+
+  @@index([tenantId, tipo, criadoEm])
+  @@map("registros_auditoria")
+}
+
+model CasoEval {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome      String
+  // Conversa de referência com o resultado esperado.
+  entrada   Json
+  esperado  Json
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now())
+
+  @@unique([tenantId, nome])
+  @@map("casos_eval")
+}
