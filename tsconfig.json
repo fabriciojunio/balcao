@@ -26,6 +26,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["lib/**/*.ts", "evals/**/*.ts", "__tests__/**/*.ts", "scripts/**/*.ts", "prisma/**/*.ts"],
+  "include": ["lib/**/*.ts", "app/**/*.ts", "evals/**/*.ts", "__tests__/**/*.ts", "scripts/**/*.ts", "prisma/**/*.ts"],
   "exclude": ["node_modules", "coverage"]
 }

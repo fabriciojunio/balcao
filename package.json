@@ -19,7 +19,10 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "audit:prod": "npm audit --omit=dev"
+    "audit:prod": "npm audit --omit=dev",
+    "dev": "tsx watch app/main.ts",
+    "start": "tsx app/main.ts",
+    "demo": "tsx scripts/demo.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
