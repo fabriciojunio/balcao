@@ -3,9 +3,8 @@
 
 import { PrismaClient } from "@prisma/client";
 import { createHmac } from "node:crypto";
-import type { FastifyInstance } from "fastify";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { criarServidor } from "../../app/servidor.js";
+import { criarServidor, type ServidorBalcao } from "../../app/servidor.js";
 import { repositoriosPrisma } from "../../lib/adaptadores/prisma.js";
 import { reais } from "../../lib/dinheiro.js";
 import type { Env } from "../../lib/env.js";
@@ -49,7 +48,7 @@ const canal: Canal = {
 };
 
 let tenantId: string;
-let app: FastifyInstance;
+let app: ServidorBalcao;
 let deps: ReturnType<typeof montarOrquestrador>;
 let repos: ReturnType<typeof repositoriosPrisma>;
 let agente: { ativo: boolean };
@@ -90,7 +89,7 @@ function webhookCom(texto: string, idExterno: string): string {
 
 async function pelaMeta(texto: string, idExterno: string) {
   const corpo = webhookCom(texto, idExterno);
-  return app.inject({
+  const resposta = await app.inject({
     method: "POST",
     url: "/api/whatsapp",
     headers: {
@@ -99,6 +98,10 @@ async function pelaMeta(texto: string, idExterno: string) {
     },
     payload: corpo,
   });
+
+  // O webhook responde antes de atender: o teste espera o trabalho terminar.
+  await app.aguardarProcessamento();
+  return resposta;
 }
 
 async function cliente(texto: string) {
@@ -136,6 +139,7 @@ beforeEach(async () => {
       precoTabela: reais(3200),
       custo: reais(2700),
       quantidade: 2,
+      sincronizadoEm: relogio.agora(),
     },
   });
 
