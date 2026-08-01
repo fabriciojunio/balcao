@@ -23,7 +23,8 @@
     "audit:prod": "npm audit --omit=dev",
     "dev": "tsx watch app/main.ts",
     "start": "tsx app/main.ts",
-    "demo": "tsx scripts/demo.ts"
+    "demo": "tsx scripts/demo.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",

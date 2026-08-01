@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["__tests__/**/*.test.ts"],
+    exclude: ["__tests__/integracao/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
