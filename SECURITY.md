@@ -41,7 +41,12 @@ clientes, e a **margem** de cada venda. As decisões abaixo saem daí.
 ### Dependências
 
 - Auditoria de dependências de produção no CI, falhando em severidade alta.
-- Dependabot semanal.
+  O que embarca em produção são cinco pacotes: Fastify e dois plugins, o cliente
+  do Prisma, o Zod e o leitor de YAML.
+- Aviso do `npm audit` em `devDependencies` (vitest, vite, esbuild) não bloqueia
+  o CI: essas ferramentas não vão para o servidor. O gate é o `--omit=dev`.
+- Dependabot semanal, sem propor troca de major automaticamente: major é
+  migração e entra por decisão. Correção de segurança continua chegando.
 - Análise estática de segurança no CI.
 
 ## Fora de escopo
