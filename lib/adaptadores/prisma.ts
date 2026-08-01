@@ -27,6 +27,7 @@ import type {
 import { erro, ok, type Result } from "../result.js";
 import { normalizarChave } from "../texto.js";
 import { calcularMetricas } from "../dominio/metricas.js";
+import { modeloCombina } from "../dominio/troca.js";
 
 export type Banco = PrismaClient;
 
@@ -183,13 +184,12 @@ export function repositorioEstoque(opcoes: OpcoesPrisma): RepositorioEstoque {
 export function repositorioTabelaTroca(opcoes: OpcoesPrisma): RepositorioTabelaTroca {
   return {
     async buscar(modeloDeclarado) {
-      const chave = normalizarChave(modeloDeclarado).replaceAll("_", " ");
       const linhas = await opcoes.db.tabelaTroca.findMany({
         where: { tenantId: opcoes.tenantId, ativo: true },
       });
 
       for (const linha of linhas) {
-        if (chave.includes(normalizarChave(linha.modelo).replaceAll("_", " "))) {
+        if (modeloCombina(modeloDeclarado, linha.modelo)) {
           return { modelo: linha.modelo, valorBase: linha.valorBase };
         }
       }

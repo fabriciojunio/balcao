@@ -28,6 +28,7 @@ import type {
   UsuarioPainel,
 } from "../portas.js";
 import { calcularMetricas } from "../dominio/metricas.js";
+import { modeloCombina } from "../dominio/troca.js";
 import { erro, ok, type Result } from "../result.js";
 import { normalizarChave, semAcento } from "../texto.js";
 
@@ -147,9 +148,8 @@ export function criarAdaptadoresMemoria(opcoes: OpcoesMemoria): AdaptadoresMemor
 
   const tabelaTroca: RepositorioTabelaTroca = {
     async buscar(modeloDeclarado) {
-      const chave = normalizarChave(modeloDeclarado).replaceAll("_", " ");
-      for (const [alvo, linha] of estado.tabelaTroca) {
-        if (chave.includes(alvo)) return linha;
+      for (const linha of estado.tabelaTroca.values()) {
+        if (modeloCombina(modeloDeclarado, linha.modelo)) return linha;
       }
       return null;
     },
