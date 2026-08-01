@@ -20,12 +20,14 @@ import type {
   RepositorioEscalonamentos,
   RepositorioEstoque,
   RepositorioLeads,
+  RepositorioMetricas,
   RepositorioPropostas,
   RepositorioTabelaTroca,
   RepositorioUsuarios,
   Reserva,
   UsuarioPainel,
 } from "../portas.js";
+import { calcularMetricas } from "../dominio/metricas.js";
 import { erro, ok, type Result } from "../result.js";
 import { normalizarChave, semAcento } from "../texto.js";
 
@@ -45,7 +47,7 @@ export interface EstadoMemoria {
   avaliacoes: Map<string, AvaliacaoRegistro>;
   propostas: Map<string, PropostaRegistro>;
   reservas: Reserva[];
-  escalonamentos: Array<{ id: string; conversaId: string; motivo: string; resumo: string; criadoEm: Date; assumidoPor?: string }>;
+  escalonamentos: Array<{ id: string; conversaId: string; motivo: string; resumo: string; criadoEm: Date; assumidoPor?: string; assumidoEm?: Date }>;
   leads: Array<{ id: string; conversaId: string; interesse: string; nome?: string; aceitaContato: boolean }>;
   auditoria: Array<{ tipo: string; detalhe: Record<string, unknown>; criadoEm: Date; conversaId?: string }>;
   enviados: EnvioRegistrado[];
@@ -83,6 +85,7 @@ export interface AdaptadoresMemoria {
   readonly escalonamentos: RepositorioEscalonamentos;
   readonly auditoria: RepositorioAuditoria;
   readonly usuarios: RepositorioUsuarios;
+  readonly metricas: RepositorioMetricas;
   readonly canal: Canal;
 }
 
@@ -287,7 +290,10 @@ export function criarAdaptadoresMemoria(opcoes: OpcoesMemoria): AdaptadoresMemor
 
     async assumir(escalonamentoId, usuarioId) {
       const alvo = estado.escalonamentos.find((e) => e.id === escalonamentoId);
-      if (alvo !== undefined) alvo.assumidoPor = usuarioId;
+      if (alvo !== undefined) {
+        alvo.assumidoPor = usuarioId;
+        alvo.assumidoEm = relogio.agora();
+      }
     },
 
     async listarAbertos(limite) {
@@ -307,6 +313,25 @@ export function criarAdaptadoresMemoria(opcoes: OpcoesMemoria): AdaptadoresMemor
 
     async listar(limite) {
       return estado.auditoria.slice(-limite).reverse();
+    },
+  };
+
+  const metricas: RepositorioMetricas = {
+    async resumo(desde) {
+      const conversas = [...estado.conversas.values()].filter((c) => c.ultimaMensagemEm >= desde);
+      const escalonamentos = estado.escalonamentos.filter((e) => e.criadoEm >= desde);
+      const comEscalonamento = new Set(escalonamentos.map((e) => e.conversaId));
+
+      return calcularMetricas(desde, {
+        conversas: conversas.length,
+        conversasComEscalonamento: conversas.filter((c) => comEscalonamento.has(c.id)).length,
+        motivos: escalonamentos.map((e) => e.motivo),
+        bloqueiosAuditor: estado.auditoria.filter((a) => a.tipo === "bloqueio_auditor" && a.criadoEm >= desde).length,
+        propostas: [...estado.propostas.values()].length,
+        esperasSegundos: escalonamentos
+          .filter((e) => e.assumidoEm !== undefined)
+          .map((e) => Math.round((e.assumidoEm!.getTime() - e.criadoEm.getTime()) / 1000)),
+      });
     },
   };
 
@@ -349,6 +374,7 @@ export function criarAdaptadoresMemoria(opcoes: OpcoesMemoria): AdaptadoresMemor
     escalonamentos,
     auditoria,
     usuarios,
+    metricas,
     canal,
   };
 }

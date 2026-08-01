@@ -20,11 +20,13 @@ import type {
   RepositorioLeads,
   RepositorioPropostas,
   RepositorioTabelaTroca,
+  RepositorioMetricas,
   RepositorioUsuarios,
   Reserva,
 } from "../portas.js";
 import { erro, ok, type Result } from "../result.js";
 import { normalizarChave } from "../texto.js";
+import { calcularMetricas } from "../dominio/metricas.js";
 
 export type Banco = PrismaClient;
 
@@ -551,6 +553,37 @@ export function repositorioUsuarios(opcoes: OpcoesPrisma): RepositorioUsuarios {
   };
 }
 
+export function repositorioMetricas(opcoes: OpcoesPrisma): RepositorioMetricas {
+  const { db, tenantId } = opcoes;
+
+  return {
+    async resumo(desde) {
+      const [conversas, escalonamentos, bloqueios, propostas] = await Promise.all([
+        db.conversa.findMany({ where: { tenantId, criadoEm: { gte: desde } }, select: { id: true } }),
+        db.escalonamento.findMany({
+          where: { tenantId, criadoEm: { gte: desde } },
+          select: { conversaId: true, motivo: true, criadoEm: true, assumidoEm: true },
+        }),
+        db.registroAuditoria.count({ where: { tenantId, tipo: "bloqueio_auditor", criadoEm: { gte: desde } } }),
+        db.proposta.count({ where: { tenantId, criadoEm: { gte: desde } } }),
+      ]);
+
+      const comEscalonamento = new Set(escalonamentos.map((e) => e.conversaId));
+
+      return calcularMetricas(desde, {
+        conversas: conversas.length,
+        conversasComEscalonamento: conversas.filter((c) => comEscalonamento.has(c.id)).length,
+        motivos: escalonamentos.map((e) => e.motivo.toLowerCase()),
+        bloqueiosAuditor: bloqueios,
+        propostas,
+        esperasSegundos: escalonamentos
+          .filter((e): e is typeof e & { assumidoEm: Date } => e.assumidoEm !== null)
+          .map((e) => Math.round((e.assumidoEm.getTime() - e.criadoEm.getTime()) / 1000)),
+      });
+    },
+  };
+}
+
 /** Todos os repositórios de uma loja, prontos para a montagem. */
 export function repositoriosPrisma(opcoes: OpcoesPrisma) {
   return {
@@ -563,6 +596,7 @@ export function repositoriosPrisma(opcoes: OpcoesPrisma) {
     escalonamentos: repositorioEscalonamentos(opcoes),
     auditoria: repositorioAuditoria(opcoes),
     usuarios: repositorioUsuarios(opcoes),
+    metricas: repositorioMetricas(opcoes),
   };
 }
 

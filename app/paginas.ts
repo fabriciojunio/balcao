@@ -2,7 +2,7 @@
 // cliente.
 
 import { formatarBRL } from "../lib/dinheiro.js";
-import type { ConversaRegistro, MensagemRegistro, PropostaRegistro } from "../lib/portas.js";
+import type { ConversaRegistro, MensagemRegistro, Metricas, PropostaRegistro } from "../lib/portas.js";
 
 const ESTILO = `
 :root{color-scheme:light dark;--linha:#c9d4d2;--fundo:#f1f4f3;--cartao:#fff;--tinta:#17262a;--acento:#0b6e63;--alerta:#a75b12}
@@ -35,7 +35,7 @@ function pagina(titulo: string, corpo: string, navegacao = true): string {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>${escapar(titulo)} - Balcão</title><style>${ESTILO}</style></head><body>
-${navegacao ? `<header><b>Balcão</b><nav><a href="/painel">Conversas</a><a href="/painel/propostas">Propostas</a><a href="/painel/auditoria">Auditoria</a></nav></header>` : ""}
+${navegacao ? `<header><b>Balcão</b><nav><a href="/painel">Conversas</a><a href="/painel/propostas">Propostas</a><a href="/painel/metricas">Métricas</a><a href="/painel/auditoria">Auditoria</a></nav></header>` : ""}
 <main>${corpo}</main></body></html>`;
 }
 
@@ -142,6 +142,38 @@ export function paginaPropostas(propostas: readonly PropostaRegistro[]): string 
           .join("")}</tbody></table>`;
 
   return pagina("Propostas", `<h1>Propostas aguardando aprovação</h1>${corpo}`);
+}
+
+export function paginaMetricas(m: Metricas): string {
+  const motivos = Object.entries(m.escalonamentos);
+  const espera =
+    m.medianaAteHumanoSegundos === null ? "sem amostra" : `${m.medianaAteHumanoSegundos}s`;
+
+  const linhas: Array<[string, string]> = [
+    ["Conversas no período", String(m.conversas)],
+    ["Resolvidas sem vendedor", String(m.conversasContidas)],
+    ["Taxa de contenção", `${m.taxaContencao}%`],
+    ["Propostas emitidas", String(m.propostas)],
+    ["Bloqueios do auditor", String(m.bloqueiosAuditor)],
+    ["Mediana até o vendedor assumir", espera],
+    ["Esperas acima de 60s", String(m.acimaDe60Segundos)],
+  ];
+
+  return pagina(
+    "Métricas",
+    `<h1>Métricas desde ${m.desde.toLocaleDateString("pt-BR")}</h1>
+<table>${linhas.map(([r, v]) => `<tr><td>${escapar(r)}</td><td><b>${escapar(v)}</b></td></tr>`).join("")}</table>
+<h2>Por que a conversa foi para um vendedor</h2>
+${
+  motivos.length === 0
+    ? '<p class="vazio">Nenhum escalonamento no período.</p>'
+    : `<table><thead><tr><th>Motivo</th><th>Quantidade</th></tr></thead><tbody>${motivos
+        .map(([motivo, qtd]) => `<tr><td><span class="chip">${escapar(motivo)}</span></td><td>${qtd}</td></tr>`)
+        .join("")}</tbody></table>`
+}
+<p class="vazio">Referência de mercado para agentes que executam ações: contenção entre 55% e 75%.
+O Decreto 11.034/2022 fala em 60 segundos para o atendimento humano começar.</p>`,
+  );
 }
 
 export function paginaAuditoria(
