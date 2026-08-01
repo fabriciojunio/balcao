@@ -1,0 +1,111 @@
+# Configuração de referência de uma loja. Copie este arquivo, troque os
+# valores e valide com `npm run config:validar`. Nenhum valor daqui está no
+# código: é isto que faz a segunda loja custar uma fração da primeira.
+#
+# Todo valor monetário é escrito em reais, porque quem edita é o operador.
+
+tenant:
+  slug: loja-exemplo
+  nome_exibicao: "Loja Exemplo Celulares"
+  fuso: America/Sao_Paulo
+  telefone_publico: "1433334444"
+  endereco: "Rua das Palmeiras, 1500 - Centro"
+  # Números que podem aparecer no texto sem serem preço.
+  numeros_publicos: [1500, 128, 256, 512]
+  horario:
+    seg_sex: "09:00-18:00"
+    sabado: "09:00-13:00"
+    domingo: null
+
+canal:
+  provedor: simulador # troque para meta_cloud_api em homologação
+  numero_id: ""
+  janela_resposta_segundos: 8
+
+modelo:
+  # A versão é exata de propósito. Apelido genérico é o que fez o bot antigo
+  # mudar de comportamento sozinho a cada atualização do fornecedor.
+  primario:
+    runtime: simulador
+    id: "simulador:v1"
+  contingencia:
+    runtime: simulador
+    id: "simulador:v1"
+  temperatura: 0.3
+  teto_tokens_conversa: 6000
+
+politica_preco:
+  margem_minima_percentual: 9
+  teto_desconto_percentual:
+    novo_lacrado: 4
+    seminovo: 7
+    acessorio: 15
+  # Quanto o agente pode ceder em cada rodada de negociação.
+  concessao_por_rodada: [0, 2, 4]
+  etiquetas_sem_desconto:
+    - lancamento_30_dias
+  alcada_aprovacao_humana_reais: 250
+  arredondamento_reais: 1
+  # Acréscimo percentual real da maquininha. Parcela fora desta tabela é
+  # recusada pelo motor: taxa estimada é chute.
+  taxas_parcelamento:
+    "1": 0
+    "2": 2.4
+    "3": 3.6
+    "4": 4.8
+    "5": 6.0
+    "6": 7.2
+    "10": 12.5
+    "12": 15.0
+
+troca:
+  validade_horas: 48
+  faixa_percentual: 6
+  ajuste_minimo: -0.85
+  exige_conferencia_fisica: true
+  valor_minimo_aceito_reais: 150
+  estados:
+    excelente: 0
+    bom: -0.08
+    regular: -0.18
+  redutores:
+    risco_leve: -0.05
+    tela_trincada: -0.35
+    bateria_abaixo_80: -0.10
+    marca_de_uso: -0.03
+    carcaca_amassada: -0.12
+    tampa_trincada: -0.08
+    so_caixa: -0.01
+    sem_caixa: -0.03
+    nao_liga: recusar
+    bloqueio_conta: recusar
+  recusa_automatica:
+    - placa_com_oxidacao
+    - aparelho_bloqueado
+    - sem_procedencia
+
+estoque:
+  conector: painel
+  idade_maxima_dado_segundos: 300
+  reserva_minutos: 60
+
+escalonamento:
+  gatilhos:
+    - frustracao
+    - fora_de_escopo
+    - falha_auditor
+    - valor_acima_alcada
+    - pedido_do_cliente
+    - avaliacao_humana_necessaria
+  max_falhas_auditor: 2
+  max_rodadas_negociacao: 3
+
+conformidade:
+  aviso_inicial: "Oi! Aqui é o atendimento da Loja Exemplo. Falo com você por um assistente automático e, a qualquer momento, é só pedir que eu chamo um vendedor."
+  url_privacidade: "https://lojaexemplo.com.br/privacidade"
+  retencao_conversas_dias: 365
+  frases_proibidas:
+    - "garantia estendida"
+    - "entrega em casa"
+    - "eu garanto"
+    - "pode fechar sem ver"
