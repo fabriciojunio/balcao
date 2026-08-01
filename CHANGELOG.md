@@ -5,6 +5,24 @@ Versionamento semântico.
 
 ## [Não lançado]
 
+### Adicionado (rodada de pesquisa de mercado)
+
+- Áudio, foto e arquivo do cliente deixam de ser descartados. Áudio é
+  transcrito e segue como texto; sem transcritor, a conversa vai para um
+  vendedor. No Brasil, de 40% a 55% das mensagens para empresa são áudio.
+- Foto do aparelho entra como pré-avaliação, com a regra de que só pode
+  confirmar ou piorar o estado declarado, nunca melhorar. O agente nunca pede
+  foto; só aceita a que o cliente mandar.
+- Envio de imagem pelo canal: a foto do produto acompanha a proposta, com a
+  legenda passando pelo mesmo auditor da mensagem.
+- Toda mensagem com valor de troca é obrigada a dizer que é pré-avaliação.
+- Bloqueio de escassez e prazo sem comprovação: "última unidade" só sai quando
+  o estoque tem uma unidade.
+- Triagem determinística antes do modelo para pedido de atendente, sinal de
+  irritação e pedido de saída.
+- `docs/pesquisa.md` com os achados de mercado e de legislação que motivaram
+  cada uma dessas mudanças.
+
 ### Adicionado (sistema completo)
 
 - Orquestrador da conversa: deduplicação de reenvio da Meta, aviso de atendimento automatizado,
