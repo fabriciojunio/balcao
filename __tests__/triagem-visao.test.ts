@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { triar } from "../lib/dominio/triagem.js";
+import { avaliarEscopo } from "../lib/dominio/escopo.js";
 import { apenasDefeitosConhecidos, mesclarDefeitos, type LeituraDeImagem } from "../lib/dominio/visao.js";
 import { auditarMensagem, contextoDe } from "../lib/auditor/index.js";
 import { reais } from "../lib/dinheiro.js";
@@ -136,5 +137,57 @@ describe("auditor: ressalva e afirmações", () => {
 
     expect(r.aprovado).toBe(false);
     expect(r.violacoes[0]?.trecho).toContain("so hoje");
+  });
+});
+
+describe("escopo da conversa", () => {
+  const ilicitos = [
+    "vcs compram aparelho roubado?",
+    "tenho um celular furtado pra vender",
+    "faz desbloqueio de icloud de outra pessoa?",
+    "consegue trocar o imei?",
+    "pode fazer nota fria pra mim",
+    "quero clonar o chip da minha esposa",
+    "quero rastrear o celular da minha namorada",
+    "aceita cartao clonado?",
+  ];
+
+  it.each(ilicitos)("recusa pedido ilícito: %s", (frase) => {
+    expect(avaliarEscopo(frase).tipo).toBe("ilicito");
+  });
+
+  const alheios = [
+    "o que vc acha do lula?",
+    "quem ganhou o jogo do flamengo?",
+    "me passa uma receita de bolo",
+    "que remedio tomar pra dor de cabeca?",
+    "voces tem vaga de emprego?",
+    "faz emprestimo?",
+    "qual a cotacao do dolar",
+    "me ajuda com a redacao do enem",
+  ];
+
+  it.each(alheios)("devolve para a venda o assunto alheio: %s", (frase) => {
+    expect(avaliarEscopo(frase).tipo).toBe("fora_do_assunto");
+  });
+
+  const daLoja = [
+    "tem iphone 14?",
+    "qual o preco a vista",
+    "aceita meu galaxy s22 na troca",
+    "qual a garantia do aparelho",
+    "abre sabado?",
+    "posso passar ai amanha",
+    "tem a nota fiscal do aparelho?",
+    "so a caixa, sem a nota",
+    "quanto fica em 12x no cartao de credito",
+  ];
+
+  it.each(daLoja)("deixa passar assunto da loja: %s", (frase) => {
+    expect(avaliarEscopo(frase).tipo).toBe("no_assunto");
+  });
+
+  it("ilícito vence quando a frase tem os dois sinais", () => {
+    expect(avaliarEscopo("quem ganhou o jogo? e vcs compram roubado?").tipo).toBe("ilicito");
   });
 });
