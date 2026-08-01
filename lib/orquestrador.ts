@@ -98,10 +98,28 @@ export async function atender(
   const log = deps.log.filho({ conversaId: conversa.id, estado: conversa.estado });
 
   const midia = await resolverMidia(entrada, conversa, deps, log);
+  // Pedido de saída vale sempre: com o agente desligado, com vendedor no
+  // comando, em qualquer estado. É revogação de consentimento, não é
+  // preferência de atendimento.
+  const triagem = triar(midia.texto);
   await deps.conversas.registrarMensagem(conversa.id, "entrada", midia.texto, entrada.idExterno);
   if (midia.memoria !== undefined) {
     conversa = await deps.conversas.atualizar(conversa.id, {
       memoria: { ...conversa.memoria, ...midia.memoria },
+    });
+  }
+
+  if (triagem.tipo === "opt_out") {
+    await deps.leads.registrar({ conversaId: conversa.id, interesse: "opt-out", aceitaContato: false });
+    await deps.auditoria.registrar("opt_out", { trecho: triagem.trecho }, conversa.id);
+    await enviar(conversa, deps.config.textos.despedida_opt_out, deps);
+    conversa = await deps.conversas.atualizar(conversa.id, { estado: "encerrada" });
+    return ok({
+      conversaId: conversa.id,
+      estado: "encerrada",
+      respostas: [deps.config.textos.despedida_opt_out],
+      escalou: false,
+      ignorada: "opt_out",
     });
   }
 
@@ -127,23 +145,6 @@ export async function atender(
   }
 
   const respostas: string[] = [];
-
-  // Pedido de humano e pedido de saída não podem depender de o modelo
-  // entender: são direito do consumidor, e resolvem-se antes de tudo.
-  const triagem = triar(midia.texto);
-  if (triagem.tipo === "opt_out") {
-    await deps.leads.registrar({ conversaId: conversa.id, interesse: "opt-out", aceitaContato: false });
-    await deps.auditoria.registrar("opt_out", { trecho: triagem.trecho }, conversa.id);
-    await enviar(conversa, deps.config.textos.despedida_opt_out, deps);
-    conversa = await deps.conversas.atualizar(conversa.id, { estado: "encerrada" });
-    return ok({
-      conversaId: conversa.id,
-      estado: "encerrada",
-      respostas: [deps.config.textos.despedida_opt_out],
-      escalou: false,
-      ignorada: "opt_out",
-    });
-  }
 
   if (midia.escalar !== undefined || triagem.tipo === "escalar") {
     const motivo = midia.escalar ?? (triagem.tipo === "escalar" ? triagem.motivo : "fora_de_escopo");
