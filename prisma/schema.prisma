@@ -1,6 +1,5 @@
-// Modelo de dados do Balcão. Todo registro carrega o tenant, e toda proposta
-// enviada guarda as versões de política, prompt e modelo que a produziram:
-// é isso que permite explicar, meses depois, por que aquele preço saiu.
+// Modelo de dados. Todo registro carrega o tenant, e toda proposta guarda as
+// versões de política, prompt e modelo que a produziram.
 
 generator client {
   provider = "prisma-client-js"
@@ -105,16 +104,16 @@ model Usuario {
 }
 
 model Contato {
-  id             String    @id @default(cuid())
-  tenantId       String
-  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  telefone       String
-  nome           String?
+  id              String    @id @default(cuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  telefone        String
+  nome            String?
   // Consentimento para contato ativo (LGPD). Sem isto, só respondemos.
-  aceitaContato  Boolean   @default(false)
+  aceitaContato   Boolean   @default(false)
   consentimentoEm DateTime?
-  anonimizadoEm  DateTime?
-  criadoEm       DateTime  @default(now())
+  anonimizadoEm   DateTime?
+  criadoEm        DateTime  @default(now())
 
   conversas Conversa[]
 
@@ -133,6 +132,7 @@ model Conversa {
   responsavelId     String?
   responsavel       Usuario?       @relation(fields: [responsavelId], references: [id])
   rodadasNegociacao Int            @default(0)
+  memoria           Json           @default("{}")
   falhasAuditor     Int            @default(0)
   ultimaMensagemEm  DateTime       @default(now())
   criadoEm          DateTime       @default(now())
@@ -166,22 +166,22 @@ model Mensagem {
 }
 
 model Produto {
-  id           String           @id @default(cuid())
-  tenantId     String
-  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sku          String
-  descricao    String
-  categoria    CategoriaProduto
-  memoriaGb    Int?
-  cor          String?
+  id             String           @id @default(cuid())
+  tenantId       String
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sku            String
+  descricao      String
+  categoria      CategoriaProduto
+  memoriaGb      Int?
+  cor            String?
   // Valores sempre em centavos inteiros.
-  precoTabela  Int
-  custo        Int
-  quantidade   Int              @default(0)
-  etiquetas    String[]         @default([])
+  precoTabela    Int
+  custo          Int
+  quantidade     Int              @default(0)
+  etiquetas      String[]         @default([])
   // Momento da última sincronização com o sistema de estoque da loja.
-  sincronizadoEm DateTime       @default(now())
-  ativo        Boolean          @default(true)
+  sincronizadoEm DateTime         @default(now())
+  ativo          Boolean          @default(true)
 
   reservas Reserva[]
 
@@ -191,16 +191,16 @@ model Produto {
 }
 
 model Reserva {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   tenantId   String
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   produtoId  String
-  produto    Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produto    Produto   @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   conversaId String
-  conversa   Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  conversa   Conversa  @relation(fields: [conversaId], references: [id], onDelete: Cascade)
   expiraEm   DateTime
   liberadaEm DateTime?
-  criadoEm   DateTime @default(now())
+  criadoEm   DateTime  @default(now())
 
   @@index([tenantId, expiraEm])
   @@index([produtoId, liberadaEm])
@@ -239,23 +239,24 @@ model TabelaTroca {
 }
 
 model AvaliacaoUsado {
-  id             String   @id @default(cuid())
-  tenantId       String
-  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversaId     String
-  conversa       Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
-  modeloDeclarado String
-  respostas      Json
-  ajustesAplicados Json
-  valorBase      Int
-  valorApurado   Int
-  recusado       Boolean  @default(false)
-  motivoRecusa   String?
-  validadeAte    DateTime?
+  id                   String    @id @default(cuid())
+  tenantId             String
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversaId           String
+  conversa             Conversa  @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  modeloDeclarado      String
+  respostas            Json
+  ajustesAplicados     Json?
+  valorBase            Int
+  valorApurado         Int?
+  exigeAvaliacaoHumana Boolean   @default(false)
+  recusado             Boolean   @default(false)
+  motivoRecusa         String?
+  validadeAte          DateTime?
   // Preenchido quando o aparelho chega na loja, para calibrar a tabela.
-  valorConferido Int?
-  conferidoEm    DateTime?
-  criadoEm       DateTime @default(now())
+  valorConferido       Int?
+  conferidoEm          DateTime?
+  criadoEm             DateTime  @default(now())
 
   propostas Proposta[]
 
@@ -264,27 +265,27 @@ model AvaliacaoUsado {
 }
 
 model Proposta {
-  id                  String           @id @default(cuid())
-  tenantId            String
-  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversaId          String
-  conversa            Conversa         @relation(fields: [conversaId], references: [id], onDelete: Cascade)
-  avaliacaoId         String?
-  avaliacao           AvaliacaoUsado?  @relation(fields: [avaliacaoId], references: [id])
-  politicaId          String
-  politica            PoliticaPreco    @relation(fields: [politicaId], references: [id])
-  itens               Json
-  precoProduto        Int
-  valorAparelhoUsado  Int              @default(0)
-  diferencaAPagar     Int
-  parcelamento        Json?
-  situacao            SituacaoProposta @default(RASCUNHO)
-  exigeAprovacaoHumana Boolean         @default(false)
-  aprovadaPor         String?
-  validadeAte         DateTime
-  versaoModelo        String
-  versaoPrompt        String
-  criadoEm            DateTime         @default(now())
+  id                   String           @id @default(cuid())
+  tenantId             String
+  tenant               Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversaId           String
+  conversa             Conversa         @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  avaliacaoId          String?
+  avaliacao            AvaliacaoUsado?  @relation(fields: [avaliacaoId], references: [id])
+  politicaId           String?
+  politica             PoliticaPreco?   @relation(fields: [politicaId], references: [id])
+  itens                Json             @default("[]")
+  precoProduto         Int
+  valorAparelhoUsado   Int              @default(0)
+  diferencaAPagar      Int
+  parcelamento         Json?
+  situacao             SituacaoProposta @default(RASCUNHO)
+  exigeAprovacaoHumana Boolean          @default(false)
+  aprovadaPor          String?
+  validadeAte          DateTime
+  versaoModelo         String
+  versaoPrompt         String
+  criadoEm             DateTime         @default(now())
 
   @@index([tenantId, situacao])
   @@index([conversaId, criadoEm])
@@ -324,15 +325,15 @@ model RegistroAuditoria {
 }
 
 model CasoEval {
-  id        String   @id @default(cuid())
-  tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  nome      String
+  id       String   @id @default(cuid())
+  tenantId String?
+  tenant   Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nome     String
   // Conversa de referência com o resultado esperado.
-  entrada   Json
-  esperado  Json
-  ativo     Boolean  @default(true)
-  criadoEm  DateTime @default(now())
+  entrada  Json
+  esperado Json
+  ativo    Boolean  @default(true)
+  criadoEm DateTime @default(now())
 
   @@unique([tenantId, nome])
   @@map("casos_eval")
