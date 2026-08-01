@@ -175,11 +175,12 @@ describe("troca de aparelho", () => {
     expect(ultimaResposta().match(/\?/g) ?? []).toHaveLength(1);
   });
 
-  it("cota dentro da tabela, com validade e ressalva", async () => {
+  it("cota dentro da tabela e diz que é pré-avaliação", async () => {
     await conduzirChecklist();
 
     expect(ultimaResposta()).toContain("R$ 684,00");
-    expect(ultimaResposta()).toContain("confirma na hora que você trouxer");
+    expect(ultimaResposta()).toContain("pré-avaliação");
+    expect(ultimaResposta()).toContain("conferência do aparelho na loja");
     expect(ultimaResposta()).toMatch(/\d{2}\/\d{2}/);
   });
 
@@ -272,5 +273,123 @@ describe("trilha de auditoria", () => {
     await cliente("tem iPhone 14?");
     const registros = await adaptadores.auditoria.listar(50);
     expect(registros.some((r) => r.tipo === "ferramenta")).toBe(true);
+  });
+});
+
+describe("áudio do cliente", () => {
+  function comAudio(transcricao: string | null) {
+    adaptadores = criarAdaptadoresMemoria({
+      relogio,
+      produtos: PRODUTOS.map((p) => ({ ...p, sincronizadoEm: instante })),
+      tabelaTroca: { "galaxy s22": reais(1200) },
+      midias: { "audio-1": { conteudo: Buffer.from("fake"), mime: "audio/ogg" } },
+    });
+
+    const base = deps();
+    return {
+      ...base,
+      canal: adaptadores.canal,
+      conversas: adaptadores.conversas,
+      estoque: adaptadores.estoque,
+      auditoria: adaptadores.auditoria,
+      escalonamentos: adaptadores.escalonamentos,
+      ...(transcricao === null
+        ? {}
+        : {
+            transcritor: {
+              async transcrever() {
+                return { ok: true as const, value: transcricao };
+              },
+            },
+          }),
+    };
+  }
+
+  it("transcreve e atende como se fosse texto", async () => {
+    const d = comAudio("oi, vocês tem iPhone 14?");
+    const r = await atender({ telefone: TELEFONE, texto: "", tipo: "audio", midiaId: "audio-1" }, d);
+
+    expect(r.ok && r.value.escalou).toBe(false);
+    expect(tudoQueFoiEnviado()).toContain("R$ 3.200,00");
+  });
+
+  it("sem transcritor, chama um vendedor em vez de descartar o áudio", async () => {
+    const d = comAudio(null);
+    const r = await atender({ telefone: TELEFONE, texto: "", tipo: "audio", midiaId: "audio-1" }, d);
+
+    expect(r.ok && r.value.escalou).toBe(true);
+    expect(tudoQueFoiEnviado()).toContain("Não consegui ouvir o áudio");
+  });
+});
+
+describe("foto do aparelho", () => {
+  function comFoto(defeitos: Array<{ chave: string; confianca: number }>, inconclusiva = false) {
+    adaptadores = criarAdaptadoresMemoria({
+      relogio,
+      produtos: PRODUTOS.map((p) => ({ ...p, sincronizadoEm: instante })),
+      tabelaTroca: { "galaxy s22": reais(1200) },
+      midias: { "foto-1": { conteudo: Buffer.from("fake"), mime: "image/jpeg" } },
+    });
+
+    return {
+      ...deps(),
+      canal: adaptadores.canal,
+      conversas: adaptadores.conversas,
+      estoque: adaptadores.estoque,
+      auditoria: adaptadores.auditoria,
+      escalonamentos: adaptadores.escalonamentos,
+      avaliacoes: adaptadores.avaliacoes,
+      visao: {
+        async analisar() {
+          return { ok: true as const, value: { defeitos, inconclusiva } };
+        },
+      },
+    };
+  }
+
+  it("agradece a foto e deixa claro que a conferência é na loja", async () => {
+    const d = comFoto([{ chave: "tela_trincada", confianca: 0.9 }]);
+    await atender({ telefone: TELEFONE, texto: "quero trocar meu Galaxy S22" }, d);
+    await atender({ telefone: TELEFONE, texto: "", tipo: "imagem", midiaId: "foto-1" }, d);
+
+    expect(tudoQueFoiEnviado()).toContain("Recebi a foto");
+    expect(tudoQueFoiEnviado()).toContain("conferência final é na loja");
+  });
+
+  it("defeito visto na foto derruba o valor e pede olho humano", async () => {
+    const d = comFoto([{ chave: "tela_trincada", confianca: 0.9 }]);
+
+    await atender({ telefone: TELEFONE, texto: "quero trocar meu Galaxy S22" }, d);
+    await atender({ telefone: TELEFONE, texto: "", tipo: "imagem", midiaId: "foto-1" }, d);
+    for (const resposta of ["não, sem bloqueio", "sim, liga", "tela sem marca", "bateria acima de 85", "carcaça inteira", "tenho a caixa e a nota"]) {
+      await atender({ telefone: TELEFONE, texto: resposta }, d);
+    }
+
+    const avaliacoes = [...adaptadores.estado.avaliacoes.values()];
+    expect(avaliacoes[0]?.exigeAvaliacaoHumana).toBe(true);
+    // Sem a foto seriam R$ 1.200,00; a trinca vista derruba para R$ 780,00.
+    expect(avaliacoes[0]?.valorApurado).toBe(reais(780));
+  });
+
+  it("o agente nunca pede foto", async () => {
+    const d = comFoto([]);
+    await atender({ telefone: TELEFONE, texto: "quero trocar meu Galaxy S22" }, d);
+    await atender({ telefone: TELEFONE, texto: "não, sem bloqueio" }, d);
+
+    expect(tudoQueFoiEnviado().toLowerCase()).not.toContain("foto");
+  });
+});
+
+describe("pedido de saída", () => {
+  it("encerra, registra e para de responder", async () => {
+    await cliente("tem iPhone 14?");
+    const r = await cliente("não quero mais receber mensagens");
+
+    expect(r.ignorada).toBe("opt_out");
+    expect(ultimaResposta()).toContain("não te mando mais mensagem");
+
+    const trilha = await adaptadores.auditoria.listar(20);
+    expect(trilha.some((t) => t.tipo === "opt_out")).toBe(true);
+    expect(adaptadores.estado.leads[0]?.aceitaContato).toBe(false);
   });
 });
