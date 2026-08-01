@@ -85,16 +85,15 @@ function aposFerramenta(retorno: string, ultimaDoCliente: string): Record<string
 
   if (tem("faixa_min")) {
     return responder(
-      "Pelo que você me contou, o seu {{usado}} fica entre {{faixa_min}} e {{faixa_max}}. " +
-        "Esse valor vale até {{validade}} e a gente confirma na hora que você trouxer na loja. " +
-        "Quer que eu monte a troca?",
+      "O seu {{usado}} fica entre {{faixa_min}} e {{faixa_max}}. {{ressalva}} " +
+        "O valor vale até {{validade}}. Quer que eu monte a troca?",
     );
   }
 
   if (tem("diferenca")) {
     return responder(
       "Ficaria assim: o {{produto}} sai por {{preco_produto}}, o seu aparelho entra por {{valor_usado}} " +
-        "e a diferença fica em {{diferenca}}. Vale até {{validade}}. Fecha assim?",
+        "e a diferença fica em {{diferenca}}. {{ressalva}} Vale até {{validade}}. Fecha assim?",
     );
   }
 

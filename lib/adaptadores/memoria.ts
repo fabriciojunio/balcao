@@ -33,6 +33,7 @@ export interface EnvioRegistrado {
   readonly telefone: string;
   readonly texto: string;
   readonly em: Date;
+  readonly imagem?: string;
 }
 
 export interface EstadoMemoria {
@@ -54,6 +55,8 @@ export interface OpcoesMemoria {
   readonly produtos?: readonly ProdutoEmEstoque[];
   readonly usuarios?: readonly (UsuarioPainel & { email: string })[];
   readonly tabelaTroca?: Readonly<Record<string, Centavos>>;
+  /** Mídias que o cliente teria enviado, por id. */
+  readonly midias?: Readonly<Record<string, { conteudo: Buffer; mime: string }>>;
   readonly relogio: Relogio;
 }
 
@@ -316,9 +319,22 @@ export function criarAdaptadoresMemoria(opcoes: OpcoesMemoria): AdaptadoresMemor
 
   const canal: Canal = {
     nome: "memoria",
+
     async enviar(telefone, texto) {
       estado.enviados.push({ telefone, texto, em: relogio.agora() });
       return ok({ idExterno: id("out") });
+    },
+
+    async enviarImagem(telefone, urlOuId, legenda) {
+      estado.enviados.push({ telefone, texto: legenda, em: relogio.agora(), imagem: urlOuId });
+      return ok({ idExterno: id("out") });
+    },
+
+    async baixarMidia(midiaId) {
+      const arquivo = (opcoes.midias ?? {})[midiaId];
+      return arquivo === undefined
+        ? erro("NAO_ENCONTRADO", `Mídia ${midiaId} não existe.`)
+        : ok(arquivo);
     },
   };
 

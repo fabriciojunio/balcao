@@ -107,6 +107,7 @@ export function paraContextoAuditoriaBase(config: ConfigTenant): ContextoAuditor
     limiarNumeroSolto: 100,
     toleranciaCentavos: 0,
     frasesProibidas: config.conformidade.frases_proibidas,
+    afirmacoesPermitidas: [],
   };
 }
 

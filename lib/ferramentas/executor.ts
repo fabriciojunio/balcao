@@ -8,6 +8,7 @@ import {
   type TabelaParcelamento,
 } from "../dominio/preco.js";
 import { montarPropostaTroca, valoresDaProposta } from "../dominio/proposta.js";
+import { mesclarDefeitos, type LeituraDeImagem } from "../dominio/visao.js";
 import {
   CHECKLIST_PADRAO,
   cotarUsado,
@@ -59,6 +60,8 @@ export interface ResultadoFerramenta {
   readonly evento?: EventoConversa;
   readonly escalar?: MotivoEscalonamento;
   readonly incrementaRodadaNegociacao?: boolean;
+  /** Imagem que acompanha a mensagem aprovada, como a foto do produto. */
+  readonly anexo?: { readonly url: string };
 }
 
 const DIGITOS = /\d+/g;
@@ -149,7 +152,13 @@ const consultarEstoque: Manipulador = async (argumentos, { deps }) => {
       })),
     }),
     valores,
-    rodada: { monetarios, numeros },
+    rodada: {
+      monetarios,
+      numeros,
+      // Escassez só é dizível quando o estoque comprova. Fora disso é
+      // publicidade enganosa (art. 37 do CDC).
+      ...(topo[0]!.quantidade === 1 ? { afirmacoes: ["ultima_unidade"] } : {}),
+    },
     memoria: { produto_id: topo[0]!.id, produto_descricao: topo[0]!.descricao },
     evento: topo.length === 1 ? "produto_escolhido" : undefined,
   });
@@ -178,6 +187,7 @@ const detalharProduto: Manipulador = async (argumentos, { deps }) => {
     rodada: {
       monetarios: [produto.precoTabela],
       numeros: [garantia, produto.quantidade, ...numerosNoTexto(produto.descricao)],
+      ...(produto.quantidade === 1 ? { afirmacoes: ["ultima_unidade"] } : {}),
     },
     memoria: { produto_id: produto.id, produto_descricao: produto.descricao },
     evento: "produto_escolhido",
@@ -354,11 +364,18 @@ const cotarUsadoFerramenta: Manipulador = async (argumentos, ctx) => {
     });
   }
 
+  const declarados = defeitosDeRespostas(respostas);
+  const leituraDaFoto = lerFotoDaMemoria(ctx);
+  const mescla =
+    leituraDaFoto === null
+      ? null
+      : mesclarDefeitos(declarados, leituraDaFoto, ctx.deps.config.troca.confianca_minima_foto);
+
   const cotacao = cotarUsado({
     modelo: avaliacao.modeloDeclarado,
     valorBase: avaliacao.valorBase,
     estadoDeclarado: estadoDeRespostas(respostas),
-    defeitos: defeitosDeRespostas(respostas),
+    defeitos: mescla === null ? declarados : mescla.defeitos,
     agora: ctx.deps.relogio.agora(),
     regra: ctx.deps.regraTroca,
   });
@@ -373,20 +390,27 @@ const cotarUsadoFerramenta: Manipulador = async (argumentos, ctx) => {
     });
   }
 
+  const exigeHumano = cotacao.exigeAvaliacaoHumana || (mescla?.exigeAvaliacaoHumana ?? false);
   await ctx.deps.avaliacoes.concluir(avaliacaoId, {
     respostas,
     valorApurado: cotacao.valor,
     validadeAte: cotacao.validadeAte,
-    exigeAvaliacaoHumana: cotacao.exigeAvaliacaoHumana,
+    exigeAvaliacaoHumana: exigeHumano,
     recusado: false,
   });
 
   const validade = dataLegivel(cotacao.validadeAte, ctx.deps.config.tenant.fuso);
+  const troca = ctx.deps.config.troca;
+
   return ok({
     textoParaModelo: json({
       marcador_faixa_min: "faixa_min",
       marcador_faixa_max: "faixa_max",
       marcador_validade: "validade",
+      marcador_ressalva: "ressalva",
+      obrigatorio: `a mensagem precisa conter a palavra ${troca.termo_ressalva}`,
+      considerou_foto: mescla !== null,
+      acrescentado_pela_foto: mescla?.acrescentadosPelaFoto ?? [],
       ressalvas: cotacao.ressalvas,
     }),
     valores: {
@@ -394,16 +418,34 @@ const cotarUsadoFerramenta: Manipulador = async (argumentos, ctx) => {
       faixa_max: formatarBRL(cotacao.faixaMax),
       validade: validade,
       usado: avaliacao.modeloDeclarado,
+      ressalva: troca.texto_ressalva,
     },
     rodada: {
       monetarios: [cotacao.faixaMin, cotacao.faixaMax, cotacao.valor],
       numeros: [...numerosNoTexto(validade), ...numerosNoTexto(avaliacao.modeloDeclarado)],
+      // Valor de troca sem a palavra "pré-avaliação" não sai daqui.
+      ressalvaExigida: troca.termo_ressalva,
     },
     memoria: { cotacao_id: avaliacaoId, cotacao_valor: String(cotacao.valor) },
     evento: "avaliacao_concluida",
-    ...(cotacao.exigeAvaliacaoHumana ? { escalar: "avaliacao_humana_necessaria" as const } : {}),
+    ...(exigeHumano ? { escalar: "avaliacao_humana_necessaria" as const } : {}),
   });
 };
+
+/** Defeitos que a foto do cliente acusou, guardados nas anotações da conversa. */
+function lerFotoDaMemoria(ctx: ContextoFerramenta): LeituraDeImagem | null {
+  const { defeitos_foto, foto_inconclusiva } = ctx.conversa.memoria;
+  if (defeitos_foto === undefined && foto_inconclusiva === undefined) return null;
+
+  return {
+    defeitos: (defeitos_foto ?? "")
+      .split(",")
+      .map((c) => c.trim())
+      .filter((c) => c !== "")
+      .map((chave) => ({ chave, confianca: 1 })),
+    inconclusiva: foto_inconclusiva === "1",
+  };
+}
 
 const montarPropostaTrocaFerramenta: Manipulador = async (argumentos, ctx) => {
   const a = argumentos as { produto_id?: string; cotacao_id?: string; parcelas?: number };
@@ -482,10 +524,14 @@ const montarPropostaTrocaFerramenta: Manipulador = async (argumentos, ctx) => {
     valores.valor_parcela = formatarBRL(p.parcelamento.valorParcela);
   }
 
+  valores.ressalva = ctx.deps.config.troca.texto_ressalva;
+
   return ok({
     textoParaModelo: json({
       proposta_id: registro.id,
       exige_aprovacao_humana: p.exigeAprovacaoHumana,
+      marcador_ressalva: "ressalva",
+      obrigatorio: `a mensagem precisa conter a palavra ${ctx.deps.config.troca.termo_ressalva}`,
       ressalvas: p.ressalvas,
       marcadores: Object.keys(valores),
     }),
@@ -494,8 +540,10 @@ const montarPropostaTrocaFerramenta: Manipulador = async (argumentos, ctx) => {
       monetarios: valoresDaProposta(p),
       ...(p.parcelamento === null ? {} : { parcelas: [p.parcelamento.parcelas] }),
       numeros: [...numerosNoTexto(validade), ...numerosNoTexto(p.descricao)],
+      ressalvaExigida: ctx.deps.config.troca.termo_ressalva,
     },
     memoria: { proposta_id: registro.id },
+    ...(produto.fotoUrl === undefined ? {} : { anexo: { url: produto.fotoUrl } }),
     ...(p.exigeAprovacaoHumana ? { escalar: "valor_acima_alcada" as const } : {}),
   });
 };

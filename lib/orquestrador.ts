@@ -13,7 +13,10 @@ import { executarFerramenta, type DependenciasFerramentas } from "./ferramentas/
 import type { Logger } from "./log.js";
 import { montarMensagens, montarPrompt, versaoDoPrompt } from "./modelo/prompt.js";
 import { contextoComValores, eventoDaResposta, processarResposta } from "./pipeline.js";
+import { triar } from "./dominio/triagem.js";
+import { mesclarDefeitos } from "./dominio/visao.js";
 import type {
+  AnalisadorDeImagem,
   Canal,
   ClienteModelo,
   ConversaRegistro,
@@ -26,6 +29,7 @@ import type {
   RepositorioLeads,
   RepositorioPropostas,
   RepositorioTabelaTroca,
+  Transcritor,
 } from "./portas.js";
 import { erro, ok, type Result } from "./result.js";
 import type { ConfigTenant } from "./tenant/schema.js";
@@ -48,6 +52,10 @@ export interface DependenciasOrquestrador {
 
   readonly modelo: ClienteModelo;
   readonly canal: Canal;
+  /** Sem transcritor, áudio vira passagem para humano. */
+  readonly transcritor?: Transcritor;
+  /** Sem leitor de imagem, foto vira passagem para humano. */
+  readonly visao?: AnalisadorDeImagem;
   readonly relogio: Relogio;
   readonly log: Logger;
 
@@ -62,6 +70,8 @@ export interface MensagemRecebida {
   readonly texto: string;
   readonly idExterno?: string;
   readonly nome?: string;
+  readonly tipo?: "texto" | "audio" | "imagem" | "outro";
+  readonly midiaId?: string;
 }
 
 export interface ResultadoAtendimento {
@@ -70,10 +80,8 @@ export interface ResultadoAtendimento {
   readonly respostas: readonly string[];
   readonly escalou: boolean;
   readonly motivoEscalonamento?: MotivoEscalonamento;
-  readonly ignorada?: "duplicada" | "agente_desligado" | "atendimento_humano";
+  readonly ignorada?: "duplicada" | "agente_desligado" | "atendimento_humano" | "opt_out";
 }
-
-const TEXTO_ESCALONAMENTO = "Vou chamar um vendedor para te ajudar, só um instante.";
 
 export async function atender(
   entrada: MensagemRecebida,
@@ -87,9 +95,15 @@ export async function atender(
   }
 
   let conversa = await deps.conversas.abrirOuRecuperar(entrada.telefone, entrada.nome);
-  await deps.conversas.registrarMensagem(conversa.id, "entrada", entrada.texto, entrada.idExterno);
-
   const log = deps.log.filho({ conversaId: conversa.id, estado: conversa.estado });
+
+  const midia = await resolverMidia(entrada, conversa, deps, log);
+  await deps.conversas.registrarMensagem(conversa.id, "entrada", midia.texto, entrada.idExterno);
+  if (midia.memoria !== undefined) {
+    conversa = await deps.conversas.atualizar(conversa.id, {
+      memoria: { ...conversa.memoria, ...midia.memoria },
+    });
+  }
 
   if (!deps.agenteAtivo()) {
     await escalar(conversa, "pedido_do_cliente", "agente desligado no painel", deps);
@@ -114,6 +128,42 @@ export async function atender(
 
   const respostas: string[] = [];
 
+  // Pedido de humano e pedido de saída não podem depender de o modelo
+  // entender: são direito do consumidor, e resolvem-se antes de tudo.
+  const triagem = triar(midia.texto);
+  if (triagem.tipo === "opt_out") {
+    await deps.leads.registrar({ conversaId: conversa.id, interesse: "opt-out", aceitaContato: false });
+    await deps.auditoria.registrar("opt_out", { trecho: triagem.trecho }, conversa.id);
+    await enviar(conversa, deps.config.textos.despedida_opt_out, deps);
+    conversa = await deps.conversas.atualizar(conversa.id, { estado: "encerrada" });
+    return ok({
+      conversaId: conversa.id,
+      estado: "encerrada",
+      respostas: [deps.config.textos.despedida_opt_out],
+      escalou: false,
+      ignorada: "opt_out",
+    });
+  }
+
+  if (midia.escalar !== undefined || triagem.tipo === "escalar") {
+    const motivo = midia.escalar ?? (triagem.tipo === "escalar" ? triagem.motivo : "fora_de_escopo");
+    const aviso = midia.aviso ?? deps.config.textos.chamando_vendedor;
+    await enviar(conversa, aviso, deps);
+    conversa = await escalar(conversa, motivo, midia.texto.slice(0, 200), deps);
+    return ok({
+      conversaId: conversa.id,
+      estado: conversa.estado,
+      respostas: [aviso],
+      escalou: true,
+      motivoEscalonamento: motivo,
+    });
+  }
+
+  if (midia.aviso !== undefined) {
+    await enviar(conversa, midia.aviso, deps);
+    respostas.push(midia.aviso);
+  }
+
   // Aviso de atendimento automatizado: exigência de conformidade, texto fixo
   // da loja, não passa pelo modelo nem pelo auditor.
   const historicoInicial = await deps.conversas.historico(conversa.id, 50);
@@ -128,6 +178,7 @@ export async function atender(
   const retornosFerramenta: string[] = [];
   let tentativa = 1;
   let escalonamentoPendente: MotivoEscalonamento | null = null;
+  let anexo: string | undefined;
 
   for (let passo = 0; passo < maxPassos; passo++) {
     const historico = await deps.conversas.historico(conversa.id, 20);
@@ -166,7 +217,7 @@ export async function atender(
     });
 
     if (decisao.tipo === "enviar") {
-      await enviar(conversa, decisao.texto, deps);
+      await enviar(conversa, decisao.texto, deps, anexo);
       respostas.push(decisao.texto);
       break;
     }
@@ -222,6 +273,7 @@ export async function atender(
     }
     if (r.evento !== undefined) conversa = await aplicarEvento(conversa, r.evento, deps);
     if (r.escalar !== undefined) escalonamentoPendente = r.escalar;
+    if (r.anexo !== undefined) anexo = r.anexo.url;
   }
 
   const motivoAutomatico = motivoParaEscalar(
@@ -241,8 +293,8 @@ export async function atender(
 
   const motivo = escalonamentoPendente ?? motivoAutomatico;
   if (motivo !== null) {
-    await enviar(conversa, TEXTO_ESCALONAMENTO, deps);
-    respostas.push(TEXTO_ESCALONAMENTO);
+    await enviar(conversa, deps.config.textos.chamando_vendedor, deps);
+    respostas.push(deps.config.textos.chamando_vendedor);
     conversa = await escalar(conversa, motivo, `estado ${conversa.estado}`, deps);
     return {
       ...ok({
@@ -294,8 +346,13 @@ async function enviar(
   conversa: ConversaRegistro,
   texto: string,
   deps: DependenciasOrquestrador,
+  anexo?: string,
 ): Promise<void> {
-  const envio = await deps.canal.enviar(conversa.telefone, texto);
+  // A legenda da imagem é o mesmo texto que passou pelo auditor.
+  const envio =
+    anexo !== undefined && deps.canal.enviarImagem !== undefined
+      ? await deps.canal.enviarImagem(conversa.telefone, anexo, texto)
+      : await deps.canal.enviar(conversa.telefone, texto);
   const idExterno = envio.ok ? envio.value.idExterno : undefined;
   await deps.conversas.registrarMensagem(conversa.id, "saida", texto, idExterno);
   if (!envio.ok) deps.log.error("canal.falha_no_envio", { motivo: envio.error.message });
@@ -332,3 +389,90 @@ function normalizarMotivo(motivo: string): MotivoEscalonamento {
 export const contextoVazio: ContextoAuditoria = contextoDe({});
 
 export { erro };
+
+interface MidiaResolvida {
+  readonly texto: string;
+  readonly aviso?: string;
+  readonly escalar?: MotivoEscalonamento;
+  readonly memoria?: Record<string, string>;
+}
+
+/**
+ * Áudio vira texto e foto vira pré-avaliação. Sem transcritor ou sem leitor
+ * de imagem, a mensagem vai para um vendedor em vez de ser descartada: no
+ * Brasil, boa parte do que o cliente manda para empresa é áudio.
+ */
+async function resolverMidia(
+  entrada: MensagemRecebida,
+  conversa: ConversaRegistro,
+  deps: DependenciasOrquestrador,
+  log: Logger,
+): Promise<MidiaResolvida> {
+  const tipo = entrada.tipo ?? "texto";
+  if (tipo === "texto") return { texto: entrada.texto };
+
+  const { midiaId } = entrada;
+  const baixar = deps.canal.baixarMidia;
+
+  if (tipo === "outro" || midiaId === undefined || baixar === undefined) {
+    return {
+      texto: entrada.texto === "" ? "(o cliente enviou um arquivo)" : entrada.texto,
+      aviso: deps.config.textos.midia_recebida,
+      escalar: "fora_de_escopo",
+    };
+  }
+
+  const arquivo = await baixar(midiaId);
+  if (!arquivo.ok) {
+    log.warn("midia.download_falhou", { tipo, motivo: arquivo.error.message });
+    return { texto: entrada.texto, aviso: deps.config.textos.midia_recebida, escalar: "fora_de_escopo" };
+  }
+
+  if (tipo === "audio") {
+    if (deps.transcritor === undefined) {
+      return { texto: "(áudio)", aviso: deps.config.textos.audio_sem_transcricao, escalar: "fora_de_escopo" };
+    }
+    const transcricao = await deps.transcritor.transcrever(arquivo.value);
+    if (!transcricao.ok) {
+      log.warn("midia.transcricao_falhou", { motivo: transcricao.error.message });
+      return { texto: "(áudio)", aviso: deps.config.textos.audio_sem_transcricao, escalar: "fora_de_escopo" };
+    }
+    await deps.auditoria.registrar("audio_transcrito", { caracteres: transcricao.value.length }, conversa.id);
+    return { texto: transcricao.value };
+  }
+
+  // Foto: entra como pré-avaliação e só pode confirmar ou piorar o estado.
+  if (!deps.config.troca.aceita_foto || deps.visao === undefined) {
+    return {
+      texto: entrada.texto === "" ? "(o cliente enviou uma foto do aparelho)" : entrada.texto,
+      aviso: deps.config.textos.midia_recebida,
+      escalar: "avaliacao_humana_necessaria",
+    };
+  }
+
+  const leitura = await deps.visao.analisar(arquivo.value);
+  if (!leitura.ok) {
+    log.warn("midia.leitura_falhou", { motivo: leitura.error.message });
+    return {
+      texto: entrada.texto === "" ? "(o cliente enviou uma foto do aparelho)" : entrada.texto,
+      aviso: deps.config.textos.midia_recebida,
+      escalar: "avaliacao_humana_necessaria",
+    };
+  }
+
+  const mescla = mesclarDefeitos([], leitura.value, deps.config.troca.confianca_minima_foto);
+  await deps.auditoria.registrar(
+    "foto_analisada",
+    { defeitos: mescla.acrescentadosPelaFoto, inconclusiva: leitura.value.inconclusiva },
+    conversa.id,
+  );
+
+  return {
+    texto: entrada.texto === "" ? "(o cliente enviou uma foto do aparelho)" : entrada.texto,
+    aviso: deps.config.textos.foto_em_avaliacao,
+    memoria: {
+      defeitos_foto: mescla.acrescentadosPelaFoto.join(","),
+      foto_inconclusiva: leitura.value.inconclusiva ? "1" : "0",
+    },
+  };
+}
