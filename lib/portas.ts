@@ -5,6 +5,7 @@ import type { Centavos } from "./dinheiro.js";
 import type { EstadoConversa, MotivoEscalonamento } from "./dominio/conversa.js";
 import type { Produto } from "./dominio/preco.js";
 import type { Result } from "./result.js";
+import type { LeituraDeImagem } from "./dominio/visao.js";
 
 // ---------------------------------------------------------------------------
 // Estoque
@@ -15,6 +16,8 @@ export interface ProdutoEmEstoque extends Produto {
   readonly memoriaGb?: number;
   readonly cor?: string;
   readonly garantiaMeses?: number;
+  /** Foto do aparelho, enviada junto da proposta. */
+  readonly fotoUrl?: string;
   /** Momento da última sincronização com o sistema da loja. */
   readonly sincronizadoEm: Date;
 }
@@ -199,6 +202,35 @@ export interface EnvioCanal {
 export interface Canal {
   readonly nome: string;
   enviar(telefone: string, texto: string): Promise<Result<EnvioCanal>>;
+  /** Manda a foto do produto junto da proposta. A legenda passa pelo auditor. */
+  enviarImagem?(telefone: string, urlOuId: string, legenda: string): Promise<Result<EnvioCanal>>;
+  /** Baixa a mídia que o cliente enviou, para transcrever ou ler. */
+  baixarMidia?(midiaId: string): Promise<Result<{ conteudo: Buffer; mime: string }>>;
+}
+
+export interface Transcritor {
+  transcrever(audio: { conteudo: Buffer; mime: string }): Promise<Result<string>>;
+}
+
+export interface AnalisadorDeImagem {
+  analisar(imagem: { conteudo: Buffer; mime: string }): Promise<Result<LeituraDeImagem>>;
+}
+
+export interface Metricas {
+  readonly desde: Date;
+  readonly conversas: number;
+  readonly conversasContidas: number;
+  readonly taxaContencao: number;
+  readonly escalonamentos: Readonly<Record<string, number>>;
+  readonly bloqueiosAuditor: number;
+  readonly propostas: number;
+  /** Segundos até um vendedor assumir. O Decreto 11.034 fala em 60. */
+  readonly medianaAteHumanoSegundos: number | null;
+  readonly acimaDe60Segundos: number;
+}
+
+export interface RepositorioMetricas {
+  resumo(desde: Date): Promise<Metricas>;
 }
 
 export interface MensagemModelo {
