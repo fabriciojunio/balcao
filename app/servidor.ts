@@ -36,9 +36,15 @@ const CABECALHOS_SEGURANCA = {
   "content-security-policy": "default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:",
 };
 
-export function criarServidor(opcoes: OpcoesServidor): FastifyInstance {
+export interface ServidorBalcao extends FastifyInstance {
+  /** Espera o atendimento disparado pelo webhook terminar. */
+  aguardarProcessamento(): Promise<void>;
+}
+
+export function criarServidor(opcoes: OpcoesServidor): ServidorBalcao {
   const app = Fastify({ logger: false, bodyLimit: 1_048_576 });
   const { env, deps, log } = opcoes;
+  const emAndamento = new Set<Promise<void>>();
 
   void app.register(cookie);
   void app.register(formbody);
@@ -103,14 +109,21 @@ export function criarServidor(opcoes: OpcoesServidor): FastifyInstance {
       return resposta.status(401).send({ erro: "assinatura inválida" });
     }
 
-    // Responder rápido é exigência da Meta: o processamento segue depois.
-    void resposta.status(200).send({ recebido: true });
+    // Responder rápido é exigência da Meta: o atendimento segue em segundo
+    // plano, registrado para o encerramento esperar o que está em andamento.
+    const tarefa = (async () => {
+      for (const mensagem of mensagensDoWebhook(corpo.json)) {
+        const resultado = await atender(mensagem, deps);
+        if (!resultado.ok) log.error("atendimento.falhou", { motivo: resultado.error.message });
+      }
+    })();
 
-    for (const mensagem of mensagensDoWebhook(corpo.json)) {
-      const resultado = await atender(mensagem, deps);
-      if (!resultado.ok) log.error("atendimento.falhou", { motivo: resultado.error.message });
-    }
-    return resposta;
+    emAndamento.add(tarefa);
+    void tarefa
+      .catch((e: unknown) => log.error("atendimento.excecao", { motivo: String(e) }))
+      .finally(() => emAndamento.delete(tarefa));
+
+    return resposta.status(200).send({ recebido: true });
   });
 
   // -------------------------------------------------------------------------
@@ -239,5 +252,9 @@ export function criarServidor(opcoes: OpcoesServidor): FastifyInstance {
     return html(resposta, paginaAuditoria(await deps.auditoria.listar(200)));
   });
 
-  return app;
+  return Object.assign(app, {
+    aguardarProcessamento: async (): Promise<void> => {
+      while (emAndamento.size > 0) await Promise.allSettled([...emAndamento]);
+    },
+  });
 }

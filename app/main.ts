@@ -112,6 +112,12 @@ log.info("servidor.no_ar", {
 for (const sinal of ["SIGINT", "SIGTERM"] as const) {
   process.on(sinal, () => {
     log.info("servidor.encerrando", { sinal });
-    void servidor.close().then(() => db.$disconnect()).then(() => process.exit(0));
+    void (async () => {
+      await servidor.close();
+      // Não derruba conversa no meio: espera o que já estava sendo atendido.
+      await servidor.aguardarProcessamento();
+      await db.$disconnect();
+      process.exit(0);
+    })();
   });
 }

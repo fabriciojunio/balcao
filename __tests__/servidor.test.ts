@@ -1,7 +1,6 @@
 import { createHmac } from "node:crypto";
-import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { criarServidor } from "../app/servidor.js";
+import { criarServidor, type ServidorBalcao } from "../app/servidor.js";
 import { criarAdaptadoresMemoria, type AdaptadoresMemoria } from "../lib/adaptadores/memoria.js";
 import { reais } from "../lib/dinheiro.js";
 import type { Env } from "../lib/env.js";
@@ -44,7 +43,7 @@ const PRODUTO: ProdutoEmEstoque = {
   sincronizadoEm: relogio.agora(),
 };
 
-let app: FastifyInstance;
+let app: ServidorBalcao;
 let adaptadores: AdaptadoresMemoria;
 let agente: { ativo: boolean };
 
