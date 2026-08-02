@@ -159,8 +159,16 @@ export function repositorioEstoque(opcoes: OpcoesPrisma): RepositorioEstoque {
     async reservar(produtoId, conversaId, expiraEm): Promise<Result<Reserva>> {
       try {
         const reserva = await db.$transaction(async (tx) => {
-          const produto = await tx.produto.findFirst({ where: { id: produtoId, tenantId } });
-          if (produto === null) throw new Error("NAO_ENCONTRADO");
+          // Trava a linha do produto antes de contar. Sem isso, duas conversas
+          // simultâneas contam zero reserva ao mesmo tempo e ambas levam a
+          // última unidade: o teste de integração pegou isso acontecendo.
+          const travado = await tx.$queryRaw<Array<{ quantidade: number }>>`
+            SELECT quantidade FROM produtos
+            WHERE id = ${produtoId} AND "tenantId" = ${tenantId}
+            FOR UPDATE`;
+
+          const produto = travado[0];
+          if (produto === undefined) throw new Error("NAO_ENCONTRADO");
 
           const ativas = await tx.reserva.count({
             where: { produtoId, liberadaEm: null, expiraEm: { gt: opcoes.relogio.agora() } },

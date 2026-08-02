@@ -117,19 +117,31 @@ describe("estoque", () => {
     expect(await reposOutraLoja.estoque.porId(idDaLojaA)).toBeNull();
   });
 
-  it("reserva a última unidade uma vez só, mesmo em paralelo", async () => {
+  it("reserva a última unidade uma vez só, com oito tentativas em paralelo", async () => {
     const produtos = await repos.estoque.buscar({ termo: "Galaxy S23" });
     const ultimo = produtos[0]!;
     const conversa = await repos.conversas.abrirOuRecuperar("5514900000001");
     const expira = new Date(relogio.agora().getTime() + 3_600_000);
 
-    const [a, b] = await Promise.all([
-      repos.estoque.reservar(ultimo.id, conversa.id, expira),
-      repos.estoque.reservar(ultimo.id, conversa.id, expira),
-    ]);
+    const tentativas = await Promise.all(
+      Array.from({ length: 8 }, () => repos.estoque.reservar(ultimo.id, conversa.id, expira)),
+    );
 
-    expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);
+    expect(tentativas.filter((r) => r.ok)).toHaveLength(1);
     expect(await db.reserva.count({ where: { produtoId: ultimo.id } })).toBe(1);
+  });
+
+  it("com duas unidades, duas conversas conseguem e a terceira não", async () => {
+    const produtos = await repos.estoque.buscar({ termo: "iPhone 14" });
+    const produto = produtos[0]!;
+    const conversa = await repos.conversas.abrirOuRecuperar("5514900000009");
+    const expira = new Date(relogio.agora().getTime() + 3_600_000);
+
+    const tentativas = await Promise.all(
+      Array.from({ length: 6 }, () => repos.estoque.reservar(produto.id, conversa.id, expira)),
+    );
+
+    expect(tentativas.filter((r) => r.ok)).toHaveLength(2);
   });
 
   it("libera a unidade quando a reserva vence", async () => {
