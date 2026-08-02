@@ -393,3 +393,103 @@ describe("pedido de saída", () => {
     expect(adaptadores.estado.leads[0]?.aceitaContato).toBe(false);
   });
 });
+
+describe("agente desligado no painel", () => {
+  it("não enche a fila com um escalonamento por mensagem", async () => {
+    agenteLigado = false;
+
+    await cliente("oi");
+    await cliente("tem iPhone 14?");
+    await cliente("e o preço?");
+
+    const abertos = await adaptadores.escalonamentos.listarAbertos(20);
+    expect(abertos).toHaveLength(1);
+    expect(adaptadores.estado.enviados).toHaveLength(0);
+  });
+
+  it("não gasta transcrição nem leitura de foto com o agente desligado", async () => {
+    agenteLigado = false;
+    let transcreveu = false;
+    let leu = false;
+
+    adaptadores = criarAdaptadoresMemoria({
+      relogio,
+      produtos: PRODUTOS.map((p) => ({ ...p, sincronizadoEm: instante })),
+      tabelaTroca: { "galaxy s22": reais(1200) },
+      midias: { "m-1": { conteudo: Buffer.from("x"), mime: "audio/ogg" } },
+    });
+
+    const d = {
+      ...deps(),
+      canal: adaptadores.canal,
+      conversas: adaptadores.conversas,
+      escalonamentos: adaptadores.escalonamentos,
+      auditoria: adaptadores.auditoria,
+      transcritor: {
+        async transcrever() {
+          transcreveu = true;
+          return { ok: true as const, value: "oi" };
+        },
+      },
+      visao: {
+        async analisar() {
+          leu = true;
+          return { ok: true as const, value: { defeitos: [], inconclusiva: false } };
+        },
+      },
+    };
+
+    await atender({ telefone: TELEFONE, texto: "", tipo: "audio", midiaId: "m-1" }, d);
+    await atender({ telefone: TELEFONE, texto: "", tipo: "imagem", midiaId: "m-1" }, d);
+
+    expect(transcreveu).toBe(false);
+    expect(leu).toBe(false);
+  });
+
+  it("o pedido de saída continua valendo com o agente desligado", async () => {
+    agenteLigado = false;
+    const r = await cliente("nao quero mais receber mensagem");
+
+    expect(r.ignorada).toBe("opt_out");
+    expect(ultimaResposta()).toContain("não te mando mais mensagem");
+  });
+
+  it("pedido ilícito com o agente desligado fica registrado sem resposta", async () => {
+    agenteLigado = false;
+    const r = await cliente("vcs compram aparelho roubado?");
+
+    expect(r.ignorada).toBe("agente_desligado");
+    expect(adaptadores.estado.enviados).toHaveLength(0);
+
+    const trilha = await adaptadores.auditoria.listar(20);
+    expect(trilha.some((t) => t.tipo === "fora_de_escopo_ilicito")).toBe(true);
+  });
+});
+
+describe("conversa já com um vendedor", () => {
+  it("registra o pedido ilícito sem o agente falar por cima", async () => {
+    await cliente("tem iPhone 14?");
+    await cliente("quero falar com um atendente");
+    const enviadosAntes = adaptadores.estado.enviados.length;
+
+    const r = await cliente("e vcs compram roubado?");
+
+    expect(r.ignorada).toBe("atendimento_humano");
+    expect(adaptadores.estado.enviados).toHaveLength(enviadosAntes);
+
+    const trilha = await adaptadores.auditoria.listar(30);
+    expect(trilha.some((t) => t.tipo === "fora_de_escopo_ilicito")).toBe(true);
+  });
+
+  it("o histórico registra a mídia recebida mesmo sem processar", async () => {
+    await cliente("tem iPhone 14?");
+    await cliente("quero falar com um atendente");
+
+    const d = { ...deps(), canal: adaptadores.canal, conversas: adaptadores.conversas };
+    await atender({ telefone: TELEFONE, texto: "", tipo: "audio", midiaId: "nao-existe" }, d);
+
+    const conversas = await adaptadores.conversas.listarAtivas(5);
+    const historico = await adaptadores.conversas.historico(conversas[0]!.id, 50);
+    expect(historico.some((m) => m.texto === "(áudio do cliente)")).toBe(true);
+  });
+});
