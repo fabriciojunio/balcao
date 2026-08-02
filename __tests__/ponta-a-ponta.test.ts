@@ -493,3 +493,60 @@ describe("conversa já com um vendedor", () => {
     expect(historico.some((m) => m.texto === "(áudio do cliente)")).toBe(true);
   });
 });
+
+describe("modelo que trava chamando ferramenta", () => {
+  it("nunca deixa o cliente sem resposta: chama um vendedor", async () => {
+    // Modelo teimoso: só chama ferramenta, nunca responde.
+    const modeloTeimoso = {
+      nome: "teimoso",
+      versao: "teimoso:v1",
+      async gerar() {
+        return {
+          ok: true as const,
+          value: {
+            conteudo: { acao: "chamar_ferramenta", ferramenta: "consultar_estoque", argumentos: { termo: "iPhone" } },
+            versao: "teimoso:v1",
+            duracaoMs: 0,
+          },
+        };
+      },
+    };
+
+    const r = await atender({ telefone: TELEFONE, texto: "tem iPhone 14?" }, { ...deps(), modelo: modeloTeimoso });
+
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.escalou).toBe(true);
+    expect(ultimaResposta()).toContain("chamar um vendedor");
+  });
+
+  it("modelo que só devolve lixo também acaba com um vendedor", async () => {
+    const modeloQuebrado = {
+      nome: "quebrado",
+      versao: "quebrado:v1",
+      async gerar() {
+        return { ok: true as const, value: { conteudo: "isso não é json", versao: "quebrado:v1", duracaoMs: 0 } };
+      },
+    };
+
+    const r = await atender({ telefone: TELEFONE, texto: "tem iPhone 14?" }, { ...deps(), modelo: modeloQuebrado });
+
+    expect(r.ok && r.value.escalou).toBe(true);
+    expect(ultimaResposta()).toContain("chamar um vendedor");
+  });
+
+  it("modelo fora do ar chama um vendedor em vez de sumir", async () => {
+    const modeloForaDoAr = {
+      nome: "fora",
+      versao: "fora:v1",
+      async gerar() {
+        return { ok: false as const, error: { code: "INTERNO" as const, message: "sem resposta" } };
+      },
+    };
+
+    const r = await atender({ telefone: TELEFONE, texto: "tem iPhone 14?" }, { ...deps(), modelo: modeloForaDoAr });
+
+    expect(r.ok && r.value.escalou).toBe(true);
+    expect(ultimaResposta()).toContain("chamar um vendedor");
+  });
+});

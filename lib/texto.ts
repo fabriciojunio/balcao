@@ -28,7 +28,6 @@ export function colapsarEspacos(texto: string): string {
 const ABREVIACOES: Readonly<Record<string, string>> = {
   vc: "voce",
   vcs: "voces",
-  vcw: "voce",
   tbm: "tambem",
   tb: "tambem",
   pq: "porque",
@@ -37,7 +36,6 @@ const ABREVIACOES: Readonly<Record<string, string>> = {
   qnto: "quanto",
   qto: "quanto",
   naum: "nao",
-  nao: "nao",
   n: "nao",
   eh: "e",
   ta: "esta",
@@ -48,7 +46,6 @@ const ABREVIACOES: Readonly<Record<string, string>> = {
   mt: "muito",
   mto: "muito",
   hj: "hoje",
-  amanha: "amanha",
   aki: "aqui",
   agr: "agora",
   dps: "depois",
@@ -63,7 +60,6 @@ const ABREVIACOES: Readonly<Record<string, string>> = {
   msg: "mensagem",
   cel: "celular",
   celu: "celular",
-  ap: "aparelho",
   apar: "aparelho",
   gtia: "garantia",
   desc: "desconto",
@@ -73,14 +69,9 @@ const ABREVIACOES: Readonly<Record<string, string>> = {
   pss: "pessoa",
   s: "sim",
   ss: "sim",
-  sim: "sim",
   kd: "cade",
   vdd: "verdade",
-  add: "adicionar",
-  min: "minha",
-  meu: "meu",
   bat: "bateria",
-  tel: "tela",
 };
 
 /**

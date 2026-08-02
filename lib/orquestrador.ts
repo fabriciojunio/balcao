@@ -251,6 +251,7 @@ export async function atender(
   let tentativa = 1;
   let escalonamentoPendente: MotivoEscalonamento | null = null;
   let anexo: string | undefined;
+  let respondeu = false;
 
   for (let passo = 0; passo < maxPassos; passo++) {
     const historico = await deps.conversas.historico(conversa.id, 20);
@@ -291,6 +292,7 @@ export async function atender(
     if (decisao.tipo === "enviar") {
       await enviar(conversa, decisao.texto, deps, anexo);
       respostas.push(decisao.texto);
+      respondeu = true;
       break;
     }
 
@@ -346,6 +348,13 @@ export async function atender(
     if (r.evento !== undefined) conversa = await aplicarEvento(conversa, r.evento, deps);
     if (r.escalar !== undefined) escalonamentoPendente = r.escalar;
     if (r.anexo !== undefined) anexo = r.anexo.url;
+  }
+
+  // Gastou todos os passos chamando ferramenta e não respondeu nada. Ficar em
+  // silêncio é o pior desfecho possível: o cliente perguntou e ninguém falou.
+  if (!respondeu && escalonamentoPendente === null) {
+    log.warn("orquestrador.sem_resposta", { passos: maxPassos });
+    escalonamentoPendente = "fora_de_escopo";
   }
 
   const motivoAutomatico = motivoParaEscalar(
