@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reais } from "../lib/dinheiro.js";
+import { analisarMoedaBR, reais } from "../lib/dinheiro.js";
 import {
   aplicarMarcadores,
   auditarMensagem,
@@ -171,5 +171,36 @@ describe("tentativas adversariais", () => {
 
   it("deixa passar somente o valor autorizado", () => {
     expect(auditarMensagem("Fecho em R$ 3.072,00 em 12x.", contexto).aprovado).toBe(true);
+  });
+});
+
+describe("casos que a sondagem encontrou", () => {
+  it("percentual com vírgula não é lido como dinheiro", () => {
+    const ocorrencias = extrairOcorrencias("desconto de 12,5%");
+    expect(ocorrencias).toHaveLength(1);
+    expect(ocorrencias[0]).toMatchObject({ tipo: "percentual", valor: 12.5 });
+  });
+
+  it("percentual quebrado passa quando a ferramenta devolveu", () => {
+    const contexto = contextoDe({ percentuaisPermitidos: [12.5] });
+    expect(auditarMensagem("São 12,5% de desconto.", contexto).aprovado).toBe(true);
+  });
+
+  it("valor com mais de duas casas decimais não é dinheiro", () => {
+    expect(analisarMoedaBR("1,999")).toBeNull();
+    expect(analisarMoedaBR("1,99")).toBe(199);
+  });
+
+  it("telefone e endereço da loja não bloqueiam a mensagem", () => {
+    const r = auditarMensagem(
+      "Estamos na Rua das Palmeiras, 1500. Se preferir, liga 1433334444.",
+      contextoBase,
+    );
+    expect(r.aprovado).toBe(true);
+  });
+
+  it("valor colado no texto continua sendo pego", () => {
+    const contexto = contextoDe({ monetariosPermitidos: [reais(3200)] });
+    expect(auditarMensagem("custa R$1.234,56hoje", contexto).aprovado).toBe(false);
   });
 });

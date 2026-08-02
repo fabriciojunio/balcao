@@ -120,7 +120,8 @@ export function analisarMoedaBR(texto: string): Centavos | null {
   let normalizado: string;
   if (corpo.includes(SEPARADOR_DECIMAL)) {
     const partes = corpo.split(SEPARADOR_DECIMAL);
-    if (partes.length !== 2) return null;
+    // Centavo tem duas casas. "1,999" é erro de digitação, não é valor.
+    if (partes.length !== 2 || (partes[1] ?? "").length > 2) return null;
     normalizado = `${partes[0]!.replaceAll(SEPARADOR_MILHAR, "")}.${partes[1]}`;
   } else if (/^\d{1,3}(\.\d{3})+$/.test(corpo)) {
     normalizado = corpo.replaceAll(SEPARADOR_MILHAR, "");

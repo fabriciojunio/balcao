@@ -20,8 +20,9 @@ const PADRAO = new RegExp(
     // A forma com milhar vem antes da forma simples para "3.200" não ser
     // lido como "3". As duas aceitam centavos opcionais.
     "(?<moeda>R\\$\\s*-?(?:\\d{1,3}(?:\\.\\d{3})+|\\d+)(?:,\\d{1,2})?)",
-    "(?<decimal>-?\\b(?:\\d{1,3}(?:\\.\\d{3})+|\\d+),\\d{1,2}\\b)",
+    // Percentual vem antes do decimal: "12,5%" é percentual, não R$ 12,50.
     "(?<percentual>\\b\\d{1,3}(?:,\\d{1,2})?\\s*%)",
+    "(?<decimal>-?\\b(?:\\d{1,3}(?:\\.\\d{3})+|\\d+),\\d{1,2}\\b)",
     "(?<parcelas>\\b\\d{1,2}\\s*x(?![a-z0-9]))",
     "(?<tecnico>\\b\\d+(?:[.,]\\d+)?\\s*(?:gb|tb|mb|mah|ghz|hz|mp|mm|pol|polegadas|w|v|meses|mes|dias|dia|horas|hora|anos|ano|unidades|unidade)\\b)",
     "(?<milhar>\\b\\d{1,3}(?:\\.\\d{3})+\\b)",
