@@ -98,7 +98,16 @@ export async function atender(
   let conversa = await deps.conversas.abrirOuRecuperar(entrada.telefone, entrada.nome);
   const log = deps.log.filho({ conversaId: conversa.id, estado: conversa.estado });
 
-  const midia = await resolverMidia(entrada, conversa, deps, log);
+  const ehTexto = (entrada.tipo ?? "texto") === "texto";
+  const agenteVaiAgir = deps.agenteAtivo() && !agenteEstaMudo(conversa.estado);
+
+  // Transcrever áudio e ler foto custa dinheiro e tempo. Com o agente
+  // desligado ou com um vendedor no comando, nem começa.
+  const midia: MidiaResolvida =
+    ehTexto || agenteVaiAgir
+      ? await resolverMidia(entrada, conversa, deps, log)
+      : { texto: rotuloDeMidia(entrada.tipo ?? "outro") };
+
   // Pedido de saída vale sempre: com o agente desligado, com vendedor no
   // comando, em qualquer estado. É revogação de consentimento, não é
   // preferência de atendimento.
@@ -130,13 +139,15 @@ export async function atender(
   if (escopo.tipo === "ilicito") {
     await deps.auditoria.registrar("fora_de_escopo_ilicito", { termo: escopo.termo }, conversa.id);
 
-    if (agenteEstaMudo(conversa.estado)) {
+    // Com o agente desligado ou com vendedor no comando, o registro fica mas
+    // o sistema não responde: quem fala ali é a loja.
+    if (!agenteVaiAgir) {
       return ok({
         conversaId: conversa.id,
         estado: conversa.estado,
         respostas: [],
         escalou: false,
-        ignorada: "atendimento_humano",
+        ignorada: deps.agenteAtivo() ? "atendimento_humano" : "agente_desligado",
       });
     }
 
@@ -152,12 +163,17 @@ export async function atender(
   }
 
   if (!deps.agenteAtivo()) {
-    await escalar(conversa, "pedido_do_cliente", "agente desligado no painel", deps);
+    // Escala uma vez só. Sem isso, cada mensagem com o agente desligado
+    // criaria um item novo na fila e o painel viraria uma parede de repetição.
+    const jaEstaComHumano = agenteEstaMudo(conversa.estado);
+    if (!jaEstaComHumano) {
+      conversa = await escalar(conversa, "pedido_do_cliente", "agente desligado no painel", deps);
+    }
     return ok({
       conversaId: conversa.id,
-      estado: "atendimento_humano",
+      estado: conversa.estado,
       respostas: [],
-      escalou: true,
+      escalou: !jaEstaComHumano,
       ignorada: "agente_desligado",
     });
   }
@@ -531,4 +547,11 @@ async function resolverMidia(
       foto_inconclusiva: leitura.value.inconclusiva ? "1" : "0",
     },
   };
+}
+
+/** Como a mensagem de mídia aparece no histórico quando não é processada. */
+function rotuloDeMidia(tipo: string): string {
+  if (tipo === "audio") return "(áudio do cliente)";
+  if (tipo === "imagem") return "(foto do cliente)";
+  return "(arquivo do cliente)";
 }
