@@ -16,3 +16,6 @@ config/tenants/*.yaml
 .DS_Store
 Thumbs.db
 *.log
+
+# PDF gerado da apresentação
+*.pdf

@@ -136,6 +136,7 @@ isso que torna o servidor dentro da loja viável.
 ## Documentação
 
 - [docs/arquitetura.md](docs/arquitetura.md) — as camadas e por que elas existem
+- [docs/apresentacao-cliente.html](docs/apresentacao-cliente.html) — demonstração para o dono da loja, com conversas reais. Gere o PDF abrindo no navegador e mandando imprimir em A4
 - [docs/pesquisa.md](docs/pesquisa.md) — o que a pesquisa de mercado e a lei mudaram no sistema
 - [docs/homologacao.md](docs/homologacao.md) — como colocar em homologação
 - [docs/roadmap.md](docs/roadmap.md) — o que falta, em ordem
