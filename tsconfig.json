@@ -21,7 +21,8 @@
     "isolatedModules": true,
     "noEmit": true,
 
-    "baseUrl": ".",
+    // Sem baseUrl: o TypeScript 7 removeu a opção, e desde a 4.4 os
+    // caminhos de "paths" já são resolvidos a partir deste arquivo.
     "paths": {
       "@/*": ["./*"]
     }
