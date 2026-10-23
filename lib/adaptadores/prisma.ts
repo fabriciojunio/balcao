@@ -277,7 +277,9 @@ export function repositorioConversas(opcoes: OpcoesPrisma): RepositorioConversas
     async historico(conversaId, limite) {
       const linhas = await db.mensagem.findMany({
         where: { conversaId },
-        orderBy: { criadoEm: "desc" },
+        // Empates no timestamp são possíveis quando mensagens chegam juntas.
+        // O id CUID dá uma ordem estável para desempatar esses registros.
+        orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
         take: limite,
       });
       return linhas.reverse().map((m) => ({
