@@ -11,7 +11,7 @@ jobs:
     name: Qualidade de codigo
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -65,7 +65,7 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://ci:ci@localhost:5432/balcao_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -91,7 +91,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Semgrep - analise estatica
         uses: semgrep/semgrep-action@v1
