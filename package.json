@@ -29,7 +29,7 @@
     "evidencias": "tsx scripts/evidencias.ts"
   },
   "dependencies": {
-    "@fastify/cookie": "^11.1.2",
+    "@fastify/cookie": "^11.1.3",
     "@fastify/formbody": "^8.0.2",
     "@prisma/client": "^5.22.0",
     "fastify": "^5.11.0",
