@@ -28,7 +28,8 @@ export const identidadeSchema = z.object({
       sabado: horario.default("09:00-13:00"),
       domingo: horario.default(null),
     })
-    .default({}),
+    // prefault: o {} passa pelo schema e ganha os horários padrão acima.
+    .prefault({}),
 });
 
 export const canalSchema = z.object({
@@ -153,9 +154,9 @@ export const configTenantSchema = z.object({
   politica_preco: politicaPrecoSchema,
   troca: trocaSchema,
   estoque: estoqueSchema,
-  escalonamento: escalonamentoSchema.default({}),
+  escalonamento: escalonamentoSchema.prefault({}),
   conformidade: conformidadeSchema,
-  textos: textosSchema.default({}),
+  textos: textosSchema.prefault({}),
 });
 
 export type ConfigTenant = z.infer<typeof configTenantSchema>;
