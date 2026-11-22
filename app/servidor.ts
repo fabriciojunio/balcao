@@ -16,6 +16,7 @@ import {
   paginaPropostas,
   paginaSimulador,
 } from "./paginas.js";
+import { protegerContraExcesso } from "./protecao.js";
 
 const COOKIE_SESSAO = "balcao_sessao";
 
@@ -48,6 +49,7 @@ export function criarServidor(opcoes: OpcoesServidor): ServidorBalcao {
   const { env, deps, log } = opcoes;
   const emAndamento = new Set<Promise<void>>();
 
+  protegerContraExcesso(app);
   void app.register(cookie);
   void app.register(formbody);
 
