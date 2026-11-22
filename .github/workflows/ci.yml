@@ -6,16 +6,19 @@ on:
   pull_request:
     branches: ["produção", "homologação"]
 
+permissions:
+  contents: read
+
 jobs:
   qualidade:
     name: Qualidade de codigo
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "20"
+          node-version: 24
           cache: "npm"
 
       - name: Instalar dependencias
@@ -65,11 +68,11 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://ci:ci@localhost:5432/balcao_test
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "20"
+          node-version: 24
           cache: "npm"
 
       - name: Instalar dependencias
@@ -91,10 +94,10 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Semgrep - analise estatica
-        uses: semgrep/semgrep-action@v1
+        uses: semgrep/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d # v1
         with:
           config: >-
             p/typescript
